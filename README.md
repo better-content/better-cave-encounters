@@ -1,5 +1,11 @@
 # Better Cave Encounters
 
+## Scope and authority
+
+This repository owns its mod-specific behavior and authoring inputs. Read [local instructions](AGENTS.md)
+and the [shared documentation/policy index](../../better-content-modpack/docs/README.md).
+
+
 Operators with permission level 2 may use `/depthdirector inspect <online player>`
 to read that player's encounter identity and family, phase, pursuit target and
 locality, warned approach, spent/remaining budget, active mob count, and the last

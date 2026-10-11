@@ -1,21 +1,11 @@
-# AGENTS.md
+# Better Cave Encounters
 
-## Scope
+Forge 1.20.1 / Java 17; mod ID `better_cave_encounters`.
+Director is player-centric. No dependency on Rail Crawler, Epic Fight, Tinkers' Construct or
+individual mob mods. Optional entities belong to datapack ecology and skip safely when absent.
+Deterministic: `./gradlew verifyFast`; Forge GameTests: `./gradlew verifyFull`.
+Stage: `./gradlew stageRuntimeJar`, `build/libs/better-cave-encounters-<version>.jar`.
 
-This repository contains the Better Content-owned Forge mod **Better Cave Encounters**.
-
-- Canonical mod ID: `better_cave_encounters`
-- Canonical artifact: `better-cave-encounters-<version>.jar`
-- Maven group: `com.bettercontent`
-- Java runtime: 17
-- Minecraft/Forge baseline: 1.20.1 / 47.4.13
-
-The Director is player-centric. Do not add a dependency on Rail Crawler, Epic Fight,
-Tinkers' Construct, or individual mob mods. Optional entity types belong in datapack
-ecology definitions and must be skipped safely when absent.
-
-## Validation and commits
-
-Run `./gradlew verifyFast` for deterministic checks and `./gradlew verifyFull` for the
-Forge GameTest lane. Commit coherent validated changes and push only when a canonical
-remote exists. Do not commit build output, runtime worlds, logs, or IDE state.
+Read [shared workspace policy](../../better-content-modpack/docs/policies/workspace.md)
+and its linked testing/disposal policies. Docs-only changes use the shared document check
+and `git diff --check`, not unrelated runtime builds.
