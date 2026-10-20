@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "actors": {
+    "born_in_chaos_v1:barrel_zombie": {
+      "credits": 3,
+      "children": {
+        "born_in_chaos_v1:maggot": 3
+      }
+    },
+    "born_in_chaos_v1:door_knight": {
+      "credits": 2,
+      "children": {
+        "born_in_chaos_v1:maggot": 2
+      }
+    },
+    "born_in_chaos_v1:fallen_chaos_knight": {
+      "credits": 2,
+      "children": {
+        "born_in_chaos_v1:maggot": 2
+      }
+    },
+    "born_in_chaos_v1:zombie_bruiser": {
+      "credits": 4,
+      "children": {
+        "born_in_chaos_v1:maggot": 4
+      }
+    },
+    "born_in_chaos_v1:zombie_clown": {
+      "credits": 3,
+      "children": {
+        "born_in_chaos_v1:maggot": 3
+      }
+    },
+    "born_in_chaos_v1:zombie_lumberjack": {
+      "credits": 2,
+      "children": {
+        "born_in_chaos_v1:maggot": 2
+      }
+    },
+    "goety:crypt_slime": {
+      "credits": 20,
+      "maximum_slime_size": 4,
+      "children": {
+        "goety:crypt_slime": 20
+      }
+    },
+    "iceandfire:dread_beast": {
+      "credits": 4,
+      "children": {
+        "iceandfire:dread_thrall": 4,
+        "iceandfire:dread_ghoul": 4,
+        "iceandfire:dread_scuttler": 4,
+        "iceandfire:dread_horse": 4,
+        "iceandfire:dread_beast": 4
+      }
+    },
+    "iceandfire:dread_scuttler": {
+      "credits": 4,
+      "children": {
+        "iceandfire:dread_thrall": 4,
+        "iceandfire:dread_ghoul": 4,
+        "iceandfire:dread_scuttler": 4,
+        "iceandfire:dread_horse": 4,
+        "iceandfire:dread_beast": 4
+      }
+    },
+    "iceandfire:dread_thrall": {
+      "credits": 4,
+      "children": {
+        "iceandfire:dread_thrall": 4,
+        "iceandfire:dread_ghoul": 4,
+        "iceandfire:dread_scuttler": 4,
+        "iceandfire:dread_horse": 4,
+        "iceandfire:dread_beast": 4
+      }
+    },
+    "tconstruct:ender_slime": {
+      "credits": 20,
+      "maximum_slime_size": 4,
+      "children": {
+        "tconstruct:ender_slime": 20
+      }
+    }
+  }
+}

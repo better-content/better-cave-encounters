@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "minecraft:netherite_ingot"}]},
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "minecraft:elytra"}]},
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "cataclysm:ancient_metal_ingot"}]},
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "cataclysm:black_steel_ingot"}]}
+  ]
+}

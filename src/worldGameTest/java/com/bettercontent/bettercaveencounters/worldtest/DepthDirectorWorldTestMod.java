@@ -15,6 +15,8 @@ public final class DepthDirectorWorldTestMod {
     }
 
     private void registerGameTests(RegisterGameTestsEvent event) {
-        event.register(DepthDirectorWorldGameTests.class);
+        if (Boolean.getBoolean("bc.geologyQualification"))
+            event.register(com.bettercontent.bettercaveencounters.GeologicalWorldGameTests.class);
+        else event.register(DepthDirectorWorldGameTests.class);
     }
 }

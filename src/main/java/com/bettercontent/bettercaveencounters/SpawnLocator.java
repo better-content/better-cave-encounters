@@ -1,5 +1,7 @@
 package com.bettercontent.bettercaveencounters;
 
+import com.bettercontent.bettercompatfixes.api.CausalMobSpawns;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -69,19 +71,11 @@ final class SpawnLocator {
                              double depth, RandomSource random, int sector, boolean allowHeavy, int maximumCost,
                              Predicate<EcologyDefinition.Entry> selectable) {
         if (players.isEmpty()) return SpawnResult.failed();
-        ServerPlayer anchorPlayer = players.get(random.nextInt(players.size()));
-        Selection selection = blend == null ? nativeSelection(level, anchorPlayer.blockPosition(), random)
-                : authoredSelection(blend, depth, random, allowHeavy, maximumCost, selectable);
-        if (selection == null || selection.cost > maximumCost || selection.type.is(DENIED)) return SpawnResult.failed();
-        Mob mob = selection.type.create(level) instanceof Mob created ? created : null;
-        if (mob == null) return SpawnResult.failed();
-        ensureApproachRange(mob);
-        Candidate candidate = candidate(level, players, anchorPlayer.position(), random, sector, mob);
-        if (candidate == null) {
-            mob.discard();
-            return SpawnResult.failed();
-        }
-        return finishSpawn(level, candidate, selection, mob, random);
+        // Resolve the corridor first. Choosing from the anchor's ecology before locating
+        // the actual floor would reintroduce encounter-wide/nonlocal roster selection.
+        return approach(level, players, random, sector)
+                .map(position -> spawnAt(level, players, blend, depth, random, position, allowHeavy, maximumCost, selectable))
+                .orElseGet(SpawnResult::failed);
     }
 
     static SpawnResult spawnAt(ServerLevel level, List<ServerPlayer> players, EcologyRegistry.Blend blend,
@@ -94,40 +88,62 @@ final class SpawnLocator {
                                double depth, RandomSource random, BlockPos position, boolean allowHeavy,
                                int maximumCost, Predicate<EcologyDefinition.Entry> selectable) {
         if (players.isEmpty()) return SpawnResult.failed();
-        Selection selection = blend == null ? nativeSelection(level, position, random)
-                : authoredSelection(blend, depth, random, allowHeavy, maximumCost, selectable);
-        if (selection == null || selection.cost > maximumCost || selection.type.is(DENIED)) return SpawnResult.failed();
-        Mob mob = selection.type.create(level) instanceof Mob created ? created : null;
-        if (mob == null) return SpawnResult.failed();
-        ensureApproachRange(mob);
-        Candidate candidate = validateCandidate(level, players, position, mob).orElse(null);
-        if (candidate == null) {
-            mob.discard();
-            return SpawnResult.failed();
+        boolean mapped = GeologicalRegistry.INSTANCE.sample(level, position).mapped();
+        for (int attempt = 0; attempt < 8; attempt++) {
+            Selection selection;
+            if (mapped) {
+                GeologicalRegistry.Choice choice = GeologicalRegistry.INSTANCE.chooseDirector(level, position,
+                        random, allowHeavy, maximumCost, selectable);
+                if (choice == null) return SpawnResult.failed(); // Recognized geology never imports fallback actors.
+                EcologyDefinition.Entry entry = choice.entry().roster();
+                selection = new Selection(ForgeRegistries.ENTITY_TYPES.getValue(entry.entity()), entry.entity(),
+                        entry.cost(), entry.role(), choice.habitat().toString());
+            } else selection = blend == null ? nativeSelection(level, position, random)
+                    : authoredSelection(blend, depth, random, allowHeavy, maximumCost, selectable);
+            if (selection == null || selection.type == null || selection.cost > maximumCost || selection.type.is(DENIED))
+                continue;
+            Mob mob = selection.type.create(level) instanceof Mob created ? created : null;
+            if (mob == null) continue;
+            GeologicalDefinition.Offspring policy = DirectorLineages.policy(mob);
+            if (selection.cost + policy.credits() > maximumCost) { mob.discard(); continue; }
+            ensureApproachRange(mob);
+            Candidate candidate = validateCandidate(level, players, position, mob).orElse(null);
+            if (candidate == null) { mob.discard(); continue; }
+            SpawnResult result = finishSpawn(level, candidate, selection, policy, mob, random, players);
+            if (result.spawned()) return result;
         }
-        return finishSpawn(level, candidate, selection, mob, random);
+        return SpawnResult.failed();
     }
 
     private static SpawnResult finishSpawn(ServerLevel level, Candidate candidate, Selection selection,
-                                           Mob mob, RandomSource random) {
+                                           GeologicalDefinition.Offspring policy, Mob mob, RandomSource random,
+                                           List<ServerPlayer> players) {
         mob.moveTo(candidate.position.getX() + 0.5, candidate.position.getY(), candidate.position.getZ() + 0.5,
                 random.nextFloat() * 360.0F, 0.0F);
-        if (!eventSpawnPositionAllowed(mob, level)
-                || !level.noCollision(mob) || !level.getWorldBorder().isWithinBounds(mob.getBoundingBox())) {
+        if (!eventSpawnPositionAllowed(mob, level) || !level.noCollision(mob)
+                || !level.getWorldBorder().isWithinBounds(mob.getBoundingBox())
+                || !DirectorRuntime.INSTANCE.reserveAdmission(level.getServer())) {
             mob.discard();
             return SpawnResult.failed();
         }
-        ForgeEventFactory.onFinalizeSpawn(mob, level, level.getCurrentDifficultyAt(candidate.position),
-                MobSpawnType.EVENT, null, null);
-        mob.addTag(PROVENANCE_TAG);
-        mob.getPersistentData().putBoolean(PROVENANCE_NBT, true);
-        bindCombatTarget(mob, candidate.target);
-        if (!level.addFreshEntity(mob)) {
-            mob.discard();
-            return SpawnResult.failed();
+        try (DirectorLineages.RootAdmission admission = DirectorLineages.beginRoot(mob, selection.role, policy, selection.cost)) {
+            if (admission == null) { mob.discard(); return SpawnResult.failed(); }
+            bindCombatTarget(mob, candidate.target);
+            mob.getPersistentData().putString("DepthDirectorSpawnHabitat", selection.habitat);
+            return CausalMobSpawns.as(mob, () -> {
+                ForgeEventFactory.onFinalizeSpawn(mob, level, level.getCurrentDifficultyAt(candidate.position),
+                        MobSpawnType.EVENT, null, null);
+                if (mob.isSpawnCancelled() || !admission.validFinalizedSize() || validateCandidate(level, players, candidate.position, mob).isEmpty()
+                        || !eventSpawnPositionAllowed(mob, level)
+                        || !level.getWorldBorder().isWithinBounds(mob.getBoundingBox()) || !level.addFreshEntity(mob)) {
+                    mob.discard();
+                    return SpawnResult.failed();
+                }
+                bindCombatTarget(mob, candidate.target);
+                admission.commit();
+                return new SpawnResult(true, mob, selection.entity, selection.cost + policy.credits(), selection.role);
+            });
         }
-        bindCombatTarget(mob, candidate.target);
-        return new SpawnResult(true, mob, selection.entity, selection.cost, selection.role);
     }
 
     static void restoreDirectorMob(Mob mob) {
@@ -184,21 +200,17 @@ final class SpawnLocator {
     private static Selection authoredSelection(EcologyRegistry.Blend blend, double depth, RandomSource random,
                                                boolean allowHeavy, int maximumCost,
                                                Predicate<EcologyDefinition.Entry> selectable) {
-        for (int attempt = 0; attempt < 8; attempt++) {
-            EcologyDefinition ecology = blend.choose(random);
-            EcologyDefinition.Entry entry = ecology.pick(random, depth, allowHeavy, entity -> {
-                EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entity);
-                return type != null && ecology.roster().stream()
-                        .anyMatch(candidate -> candidate.entity().equals(entity)
-                                && authoredCategoryAllowed(type, candidate));
-            }, candidate -> candidate.cost() <= maximumCost && selectable.test(candidate));
-            if (entry == null) continue;
-            EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entry.entity());
-            if (type != null && authoredCategoryAllowed(type, entry)) {
-                return new Selection(type, entry.entity(), entry.cost(), entry.role());
-            }
-        }
-        return null;
+        EcologyDefinition ecology = blend.choose(random);
+        EcologyDefinition.Entry entry = ecology.pick(random, depth, allowHeavy, entity -> {
+            if (!ForgeRegistries.ENTITY_TYPES.containsKey(entity)) return false;
+            EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entity);
+            return type != null && !type.is(DENIED) && ecology.roster().stream()
+                    .anyMatch(candidate -> candidate.entity().equals(entity) && authoredCategoryAllowed(type, candidate));
+        }, candidate -> candidate.cost() + DirectorLineages.reservation(candidate.entity()) <= maximumCost && selectable.test(candidate));
+        if (entry == null) return null;
+        EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entry.entity());
+        return type != null && authoredCategoryAllowed(type, entry)
+                ? new Selection(type, entry.entity(), entry.cost(), entry.role()) : null;
     }
 
     private static boolean authoredCategoryAllowed(EntityType<?> type, EcologyDefinition.Entry entry) {
@@ -220,7 +232,7 @@ final class SpawnLocator {
         preview.discard();
         if (health > 80.0) return null;
         int cost = Math.max(1, Math.min(8, (int) Math.ceil(health / 20.0) + (int) Math.floor(armor / 10.0)));
-        return new Selection(type, ForgeRegistries.ENTITY_TYPES.getKey(type), cost, EcologyDefinition.Role.LINE);
+        return new Selection(type, ForgeRegistries.ENTITY_TYPES.getKey(type), cost, EcologyDefinition.Role.LINE, "native");
     }
 
     private static Candidate candidate(ServerLevel level, List<ServerPlayer> players, Vec3 anchor,
@@ -313,7 +325,11 @@ final class SpawnLocator {
             return new CandidateValidation(Optional.empty(), rejection);
         }
     }
-    private record Selection(EntityType<?> type, ResourceLocation entity, int cost, EcologyDefinition.Role role) {}
+    private record Selection(EntityType<?> type, ResourceLocation entity, int cost, EcologyDefinition.Role role, String habitat) {
+        Selection(EntityType<?> type, ResourceLocation entity, int cost, EcologyDefinition.Role role) {
+            this(type, entity, cost, role, "legacy_noise");
+        }
+    }
     record SpawnResult(boolean spawned, Mob mob, ResourceLocation entity, int cost, EcologyDefinition.Role role) {
         static SpawnResult failed() { return new SpawnResult(false, null, null, 0, null); }
     }

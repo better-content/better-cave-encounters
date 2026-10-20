@@ -18,6 +18,8 @@ public final class DepthDirectorMod {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::registerGameTests);
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, DirectorConfig.SPEC);
         MinecraftForge.EVENT_BUS.register(DepthDirectorEvents.class);
+        MinecraftForge.EVENT_BUS.register(GeologicalSpawns.class);
+        MinecraftForge.EVENT_BUS.register(DirectorLineages.class);
         LOGGER.info("Loaded {}", MOD_ID);
     }
 

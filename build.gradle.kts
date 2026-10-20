@@ -1,3 +1,10 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.io.File
+import java.security.MessageDigest
+import java.time.Instant
+import java.util.UUID
+
 plugins {
     idea
     jacoco
@@ -19,6 +26,25 @@ val worldGameTest = sourceSets.create("worldGameTest") {
     runtimeClasspath += output + compileClasspath
 }
 
+val geologyGameTest = sourceSets.create("geologyGameTest") {
+    java.srcDir("src/worldGameTest/java")
+    resources.srcDir("src/worldGameTest/resources")
+    compileClasspath += sourceSets.main.get().output + configurations.compileClasspath.get()
+    runtimeClasspath += output + compileClasspath
+}
+val qualification = JsonSlurper().parse(file("src/worldGameTest/resources/geological-qualification.json")) as Map<*, *>
+val geologicalArchives = (qualification["archives"] as List<*>).map { it as Map<*, *> }
+val geologicalPackInputs = (qualification["pack_inputs"] as List<*>).map { it.toString() }
+val geologicalPackRoot = providers.environmentVariable("BC_PACK_ROOT").orNull?.let(::file)
+    ?: file("../../better-content-modpack")
+val pinnedGeologicalArchives = configurations.create("pinnedGeologicalArchives") { isTransitive = false }
+val nativeFixtureId = providers.gradleProperty("bc.nativeFixtureId")
+    .orElse("${Instant.now().toEpochMilli()}-${UUID.randomUUID().toString().take(8)}").get()
+require(nativeFixtureId.matches(Regex("[A-Za-z0-9_-]{1,80}"))) { "Unsafe native fixture ID" }
+val gameTestRun = file("run-gametest/$nativeFixtureId")
+val worldTestRun = file("run-world-gametest/$nativeFixtureId")
+val geologyTestRun = file("run-geology-gametest/$nativeFixtureId")
+
 minecraft {
     mappings("official", property("minecraft_version") as String)
     copyIdeResources = true
@@ -33,7 +59,7 @@ minecraft {
         create("client")
         create("server") { arg("--nogui") }
         val gameTestServer = create("gameTestServer") {
-            workingDirectory(project.file("run-gametest"))
+            workingDirectory(gameTestRun)
             property("forge.enableGameTest", "true")
             property("forge.gameTestServer", "true")
             property("forge.enabledGameTestNamespaces", property("mod_id") as String)
@@ -43,7 +69,7 @@ minecraft {
         }
         create("worldGameTestServer") {
             parent(gameTestServer)
-            workingDirectory(project.file("run-world-gametest"))
+            workingDirectory(worldTestRun)
             property("forge.enableGameTest", "true")
             property("forge.gameTestServer", "true")
             property("forge.enabledGameTestNamespaces", "better_cave_encounters_world_tests")
@@ -53,6 +79,16 @@ minecraft {
             mods {
                 create("better_cave_encounters_world_tests") { source(worldGameTest) }
             }
+        }
+        create("geologyGameTestServer") {
+            parent(gameTestServer)
+            workingDirectory(geologyTestRun)
+            property("forge.enabledGameTestNamespaces", "better_cave_encounters_geology_tests")
+            property("bc.geologyQualification", "true")
+            property("mixin.env.remapRefMap", "true")
+            property("mixin.env.refMapRemappingFile", file("build/createSrgToMcp/output.srg").absolutePath)
+            arg("--nogui")
+            mods { create("better_cave_encounters_world_tests") { source(geologyGameTest) } }
         }
     }
 }
@@ -138,6 +174,12 @@ dependencies {
     add("worldGameTestRuntimeOnly", fg.deobf(
             "worldtest.enderman:endermanoverhaul-forge-1.20.1-1.0.4:yjxych8u@jar"))
     add("worldGameTestRuntimeOnly", fg.deobf("bettercontent.local:better-deaths-door:1.0.0"))
+    // Only declared current-pack archives, not the legacy world's extra Deeper and Darker fixture.
+    geologicalArchives.forEach { archive ->
+        val coordinate = archive["coordinate"].toString()
+        add(pinnedGeologicalArchives.name, coordinate)
+        add("geologyGameTestRuntimeOnly", fg.deobf(coordinate))
+    }
 }
 
 tasks.processResources {
@@ -166,29 +208,88 @@ tasks.named("assemble") { dependsOn(stageRuntimeJar) }
 tasks.withType<JavaCompile>().configureEach { options.release.set(17) }
 tasks.test { useJUnitPlatform() }
 
-val resetGameTestMods = tasks.register<Delete>("resetGameTestMods") {
-    delete(layout.projectDirectory.dir("run-gametest/mods"))
+fun retainedFixture(name: String, directory: File) = tasks.register(name) {
+    doLast {
+        require(!directory.exists() || directory.listFiles().isNullOrEmpty()) {
+            "Native fixture already exists at $directory; choose a fresh -Pbc.nativeFixtureId (nothing was deleted)"
+        }
+        directory.mkdirs()
+        // Vanilla logs ERROR for a missing properties file even in a fresh GameTest run.
+        // An empty file uses native defaults without accepting that startup failure.
+        directory.resolve("server.properties").writeText("# Retained native GameTest fixture; vanilla defaults.\n")
+    }
 }
-val syncGameTestStructures = tasks.register<Sync>("syncGameTestStructures") {
+val prepareGameTestRun = retainedFixture("prepareRetainedGameTestRun", gameTestRun)
+val prepareWorldTestRun = retainedFixture("prepareRetainedWorldTestRun", worldTestRun)
+val prepareGeologyTestRun = retainedFixture("prepareRetainedGeologyTestRun", geologyTestRun)
+val syncGameTestStructures = tasks.register<Copy>("syncGameTestStructures") {
+    dependsOn(prepareGameTestRun)
     from(layout.projectDirectory.dir("src/main/resources/gameteststructures"))
-    into(layout.projectDirectory.dir("run-gametest/gameteststructures"))
+    into(gameTestRun.resolve("gameteststructures"))
 }
 tasks.matching { it.name.startsWith("prepareRunGameTestServer") }.configureEach {
-    dependsOn(resetGameTestMods, syncGameTestStructures)
+    dependsOn(syncGameTestStructures)
 }
-
-val resetWorldGameTestRun = tasks.register<Delete>("resetWorldGameTestRun") {
-    delete(layout.projectDirectory.dir("run-world-gametest/world"))
-    delete(layout.projectDirectory.dir("run-world-gametest/logs"))
-    delete(layout.projectDirectory.dir("run-world-gametest/config"))
-    delete(layout.projectDirectory.dir("run-world-gametest/mods"))
-}
-val syncWorldGameTestStructures = tasks.register<Sync>("syncWorldGameTestStructures") {
+val syncWorldGameTestStructures = tasks.register<Copy>("syncWorldGameTestStructures") {
+    dependsOn(prepareWorldTestRun)
     from(layout.projectDirectory.dir("src/main/resources/gameteststructures"))
-    into(layout.projectDirectory.dir("run-world-gametest/gameteststructures"))
+    into(worldTestRun.resolve("gameteststructures"))
 }
 tasks.matching { it.name.startsWith("prepareRunWorldGameTestServer") }.configureEach {
-    dependsOn(resetWorldGameTestRun, syncWorldGameTestStructures)
+    dependsOn(syncWorldGameTestStructures)
+}
+
+val verifyGeologicalPins = tasks.register("verifyGeologicalPins") {
+    dependsOn(tasks.named("reobfJar"), prepareGeologyTestRun)
+    inputs.files(geologicalArchives.map { geologicalPackRoot.resolve(it["pin"].toString()) })
+    doLast {
+        val hashes = linkedMapOf<String, String>()
+        fun digest(file: File, algorithm: String) = MessageDigest.getInstance(algorithm)
+            .digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+        val resolved = pinnedGeologicalArchives.resolvedConfiguration.resolvedArtifacts
+        geologicalArchives.forEach { archive ->
+            val coordinate = archive["coordinate"].toString().substringBefore('@')
+            val pin = geologicalPackRoot.resolve(archive["pin"].toString())
+            require(pin.isFile) { "Missing committed pack pin: $pin" }
+            val text = pin.readText()
+            fun value(key: String) = Regex("(?m)^" + Regex.escape(key) + "\\s*=\\s*\"([^\"]+)\"")
+                .find(text)?.groupValues?.get(1) ?: error("Missing $key in $pin")
+            val original = resolved.single { it.moduleVersion.id.toString() == coordinate }.file
+            val expected = value("hash")
+            require(digest(original, value("hash-format").replace("sha", "SHA-")).equals(expected, true)) {
+                "Pinned native archive mismatch for $coordinate / $pin"
+            }
+            hashes[coordinate] = digest(original, "SHA-256")
+        }
+        listOf("better-compat-fixes" to "better-compat-fixes-0.1.9.jar",
+            "better-deaths-door" to "better-deaths-door-1.0.0.jar",
+            "better-gameplay-notices" to "better-gameplay-notices-1.0.0.jar").forEach { (repo, artifact) ->
+            hashes[artifact] = digest(betterContentJar(repo, artifact), "SHA-256")
+        }
+        hashes["director_reobf_artifact"] = digest(layout.buildDirectory.file("reobfJar/output.jar").get().asFile, "SHA-256")
+        val packHashes = linkedMapOf<String, String>()
+        geologicalPackInputs.forEach { pattern ->
+            val files = fileTree(geologicalPackRoot) { include(pattern) }.files
+            require(files.isNotEmpty()) { "Missing declared geological qualification input: $pattern" }
+            files.sorted().forEach { packHashes[it.relativeTo(geologicalPackRoot).invariantSeparatorsPath] = digest(it, "SHA-256") }
+        }
+        geologyTestRun.resolve("qualification-inputs.json").writeText(JsonOutput.prettyPrint(JsonOutput.toJson(mapOf(
+            "fixture_id" to nativeFixtureId, "native_sha256" to hashes, "pack_sha256" to packHashes,
+            "verdict_scope" to "native source fixture; not full-pack same-artifact acceptance"))))
+    }
+}
+val prepareGeologicalInputs = tasks.register<Copy>("prepareGeologicalInputs") {
+    dependsOn(verifyGeologicalPins)
+    from(geologicalPackRoot) { include(geologicalPackInputs) }
+    into(geologyTestRun)
+}
+val syncGeologicalStructures = tasks.register<Copy>("syncGeologicalStructures") {
+    dependsOn(verifyGeologicalPins)
+    from(layout.projectDirectory.dir("src/main/resources/gameteststructures"))
+    into(geologyTestRun.resolve("gameteststructures"))
+}
+tasks.matching { it.name.startsWith("prepareRunGeologyGameTestServer") }.configureEach {
+    dependsOn(prepareGeologicalInputs, syncGeologicalStructures)
 }
 
 tasks.register("headlessGameTest") {
@@ -205,9 +306,12 @@ tasks.register("verifyFull") {
 }
 tasks.register("verifyWorld") {
     group = "verification"
-    description = "Runs the explicit full-cadence real-catalogue Director qualification suite."
-    dependsOn(tasks.named("verifyFull"), tasks.named("runWorldGameTestServer"))
+    description = "Runs retained full-cadence and pinned geological/native-population qualification fixtures."
+    dependsOn(tasks.named("verifyFull"), tasks.named("runWorldGameTestServer"), tasks.named("runGeologyGameTestServer"))
 }
 tasks.matching { it.name == "runWorldGameTestServer" }.configureEach {
     mustRunAfter(tasks.named("verifyFull"))
+}
+tasks.matching { it.name == "runGeologyGameTestServer" }.configureEach {
+    mustRunAfter(tasks.named("verifyFull"), tasks.named("runWorldGameTestServer"))
 }

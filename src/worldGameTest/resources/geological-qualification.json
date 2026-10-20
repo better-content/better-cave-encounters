@@ -1,0 +1,319 @@
+{
+  "schema_version": 1,
+  "archives": [
+    {
+      "pin": "mods/born-in-chaos.pw.toml",
+      "coordinate": "curse.maven:born-in-chaos-686437:7917933"
+    },
+    {
+      "pin": "mods/goety.pw.toml",
+      "coordinate": "curse.maven:goety-586095:8087429"
+    },
+    {
+      "pin": "mods/quark.pw.toml",
+      "coordinate": "curse.maven:quark-243121:6427817"
+    },
+    {
+      "pin": "mods/zeta.pw.toml",
+      "coordinate": "curse.maven:zeta-968868:7335229"
+    },
+    {
+      "pin": "mods/tinkers-construct.pw.toml",
+      "coordinate": "curse.maven:tinkers-construct-74072:7449219"
+    },
+    {
+      "pin": "mods/mantle.pw.toml",
+      "coordinate": "curse.maven:mantle-74924:7563777"
+    },
+    {
+      "pin": "mods/geckolib.pw.toml",
+      "coordinate": "curse.maven:geckolib-388172:7553267"
+    },
+    {
+      "pin": "mods/curios.pw.toml",
+      "coordinate": "curse.maven:curios-309927:6418456"
+    },
+    {
+      "pin": "mods/resourceful-lib.pw.toml",
+      "coordinate": "curse.maven:resourceful-lib-570073:5659871"
+    },
+    {
+      "pin": "mods/resourceful-config.pw.toml",
+      "coordinate": "curse.maven:resourceful-config-714059:6231176"
+    },
+    {
+      "pin": "mods/enderman-overhaul.pw.toml",
+      "coordinate": "worldtest.enderman:endermanoverhaul-forge-1.20.1-1.0.4:yjxych8u@jar"
+    },
+    {
+      "pin": "mods/cataclysm.pw.toml",
+      "coordinate": "curse.maven:cataclysm-551586:8246047"
+    },
+    {
+      "pin": "mods/lionfishapi.pw.toml",
+      "coordinate": "curse.maven:lionfishapi-1001614:8095554"
+    },
+    {
+      "pin": "mods/alexs-caves.pw.toml",
+      "coordinate": "curse.maven:alexs-caves-924854:5848216"
+    },
+    {
+      "pin": "mods/citadel.pw.toml",
+      "coordinate": "curse.maven:citadel-331936:7476570"
+    },
+    {
+      "pin": "mods/ice-and-fire-dragons.pw.toml",
+      "coordinate": "curse.maven:ice-and-fire-dragons-264231:5633453"
+    },
+    {
+      "pin": "mods/the-twilight-forest.pw.toml",
+      "coordinate": "curse.maven:the-twilight-forest-227639:5468648"
+    },
+    {
+      "pin": "mods/unearthed.pw.toml",
+      "coordinate": "curse.maven:unearthed-406825:7742307"
+    },
+    {
+      "pin": "mods/hyle.pw.toml",
+      "coordinate": "curse.maven:hyle-609850:7736352"
+    },
+    {
+      "pin": "mods/kubejs.pw.toml",
+      "coordinate": "curse.maven:kubejs-238086:5853326"
+    },
+    {
+      "pin": "mods/rhino.pw.toml",
+      "coordinate": "curse.maven:rhino-416294:6186971"
+    },
+    {
+      "pin": "mods/architectury-api.pw.toml",
+      "coordinate": "curse.maven:architectury-api-419699:5137938"
+    },
+    {
+      "pin": "mods/lootjs.pw.toml",
+      "coordinate": "curse.maven:lootjs-570630:7551186"
+    },
+    {
+      "pin": "mods/global-gamerules.pw.toml",
+      "coordinate": "curse.maven:global-gamerules-227657:7172469"
+    },
+    {
+      "pin": "mods/in-control.pw.toml",
+      "coordinate": "curse.maven:in-control-257356:7436213"
+    }
+  ],
+  "pack_inputs": [
+    "kubejs/data/better_cave_encounters/**",
+    "kubejs/data/better_compat_fixes/tags/entity_types/legacy_underground_ambient_denied.json",
+    "kubejs/server_scripts/policy/global_loot_progression.js",
+    "kubejs/config/crafting_policy.json",
+    "kubejs/config/quarantined_items.json",
+    "config/better_cave_encounters-common.toml",
+    "config/better_compat_fixes-common.toml",
+    "config/iceandfire-common.toml",
+    "config/endermanoverhaul.json",
+    "config/goety/**",
+    "config/tconstruct-common.toml",
+    "config/twilightforest-common.toml",
+    "config/quark-common.toml",
+    "config/unearthed-common.toml",
+    "config/globalgamerules-common.toml",
+    "config/incontrol/**",
+    "defaultconfigs/incontrol-server.toml",
+    "defaultconfigs/forge-server.toml",
+    "defaultconfigs/curios-server.toml",
+    "defaultconfigs/mantle-server.toml"
+  ],
+  "additions": [
+    "alexscaves:corrodent",
+    "born_in_chaos_v1:fallen_chaos_knight",
+    "cataclysm:draugr",
+    "cataclysm:elite_draugr",
+    "cataclysm:endermaptera",
+    "cataclysm:koboleton",
+    "cataclysm:royal_draugr",
+    "cataclysm:the_watcher",
+    "goety:bone_spider",
+    "goety:border_wraith",
+    "goety:crypt_slime",
+    "goety:haunted_armor",
+    "iceandfire:dread_beast",
+    "iceandfire:dread_scuttler",
+    "iceandfire:dread_thrall",
+    "iceandfire:ghost",
+    "iceandfire:troll",
+    "twilightforest:kobold",
+    "twilightforest:pinch_beetle",
+    "twilightforest:slime_beetle"
+  ],
+  "reproductive_actors": {
+    "born_in_chaos_v1:zombie_clown": {
+      "credits": 3,
+      "children": {
+        "born_in_chaos_v1:maggot": 3
+      }
+    },
+    "born_in_chaos_v1:door_knight": {
+      "credits": 2,
+      "children": {
+        "born_in_chaos_v1:maggot": 2
+      }
+    },
+    "iceandfire:dread_scuttler": {
+      "credits": 4,
+      "children": {
+        "iceandfire:dread_thrall": 4,
+        "iceandfire:dread_ghoul": 4,
+        "iceandfire:dread_scuttler": 4,
+        "iceandfire:dread_horse": 4,
+        "iceandfire:dread_beast": 4
+      }
+    },
+    "born_in_chaos_v1:zombie_bruiser": {
+      "credits": 4,
+      "children": {
+        "born_in_chaos_v1:maggot": 4
+      }
+    },
+    "iceandfire:dread_thrall": {
+      "credits": 4,
+      "children": {
+        "iceandfire:dread_thrall": 4,
+        "iceandfire:dread_ghoul": 4,
+        "iceandfire:dread_scuttler": 4,
+        "iceandfire:dread_horse": 4,
+        "iceandfire:dread_beast": 4
+      }
+    },
+    "tconstruct:ender_slime": {
+      "credits": 20,
+      "maximum_slime_size": 4,
+      "children": {
+        "tconstruct:ender_slime": 20
+      }
+    },
+    "born_in_chaos_v1:barrel_zombie": {
+      "credits": 3,
+      "children": {
+        "born_in_chaos_v1:maggot": 3
+      }
+    },
+    "iceandfire:dread_beast": {
+      "credits": 4,
+      "children": {
+        "iceandfire:dread_thrall": 4,
+        "iceandfire:dread_ghoul": 4,
+        "iceandfire:dread_scuttler": 4,
+        "iceandfire:dread_horse": 4,
+        "iceandfire:dread_beast": 4
+      }
+    },
+    "born_in_chaos_v1:zombie_lumberjack": {
+      "credits": 2,
+      "children": {
+        "born_in_chaos_v1:maggot": 2
+      }
+    },
+    "born_in_chaos_v1:fallen_chaos_knight": {
+      "credits": 2,
+      "children": {
+        "born_in_chaos_v1:maggot": 2
+      }
+    },
+    "goety:crypt_slime": {
+      "credits": 20,
+      "maximum_slime_size": 4,
+      "children": {
+        "goety:crypt_slime": 20
+      }
+    }
+  },
+  "habitats": {
+    "banded_sentinels": {
+      "raw_rock_tag": "better_cave_encounters:geology/banded_sentinels",
+      "ordinary": [
+        "goety:frayed",
+        "born_in_chaos_v1:decrepit_skeleton"
+      ]
+    },
+    "black_stalking_caves": {
+      "raw_rock_tag": "better_cave_encounters:geology/black_stalking_caves",
+      "ordinary": [
+        "minecraft:spider",
+        "born_in_chaos_v1:dread_hound",
+        "alexscaves:corrodent",
+        "iceandfire:dread_scuttler"
+      ]
+    },
+    "ivory_ossuary": {
+      "raw_rock_tag": "better_cave_encounters:geology/ivory_ossuary",
+      "ordinary": [
+        "born_in_chaos_v1:baby_skeleton",
+        "born_in_chaos_v1:decrepit_skeleton",
+        "goety:bone_spider",
+        "iceandfire:dread_thrall"
+      ]
+    },
+    "karst_nests": {
+      "raw_rock_tag": "better_cave_encounters:geology/karst_nests",
+      "ordinary": [
+        "minecraft:silverfish",
+        "minecraft:spider",
+        "twilightforest:pinch_beetle",
+        "twilightforest:slime_beetle"
+      ]
+    },
+    "mineral_rifts": {
+      "raw_rock_tag": "better_cave_encounters:geology/mineral_rifts",
+      "ordinary": [
+        "endermanoverhaul:cave_enderman",
+        "minecraft:endermite",
+        "cataclysm:endermaptera"
+      ]
+    },
+    "ochre_tombs": {
+      "raw_rock_tag": "better_cave_encounters:geology/ochre_tombs",
+      "ordinary": [
+        "goety:rattled",
+        "goety:frayed",
+        "cataclysm:koboleton",
+        "cataclysm:draugr"
+      ]
+    },
+    "red_hunting_grounds": {
+      "raw_rock_tag": "better_cave_encounters:geology/red_hunting_grounds",
+      "ordinary": [
+        "born_in_chaos_v1:dread_hound",
+        "born_in_chaos_v1:baby_spider",
+        "iceandfire:dread_beast"
+      ]
+    },
+    "rubble_burrows": {
+      "raw_rock_tag": "better_cave_encounters:geology/rubble_burrows",
+      "ordinary": [
+        "minecraft:silverfish",
+        "goety:web_spider",
+        "alexscaves:corrodent",
+        "twilightforest:kobold"
+      ]
+    },
+    "silt_carrion": {
+      "raw_rock_tag": "better_cave_encounters:geology/silt_carrion",
+      "ordinary": [
+        "born_in_chaos_v1:corpse_fly",
+        "born_in_chaos_v1:baby_spider",
+        "goety:crypt_slime"
+      ]
+    },
+    "silver_haunt": {
+      "raw_rock_tag": "better_cave_encounters:geology/silver_haunt",
+      "ordinary": [
+        "goety:wraith",
+        "born_in_chaos_v1:restless_spirit",
+        "goety:border_wraith",
+        "iceandfire:ghost"
+      ]
+    }
+  },
+  "acceptance_boundary": "Native fixture only. Full-pack acceptance, complete protection integrations, loot modifier combinations and external event-domain behavior still require the supported immutable-candidate Dist/Debug acceptance when ordered."
+}

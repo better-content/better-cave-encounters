@@ -49,6 +49,9 @@ final class DirectorRuntime {
     private final Map<UUID, UUID> mobEncounter = new HashMap<>();
     private final FixedBreachAuthorizations fixedBreachAuthorized = new FixedBreachAuthorizations();
     private int spawnsThisSecond;
+    private int spawnsThisTick;
+    private long rateTick = Long.MIN_VALUE;
+    private long rateSecond = Long.MIN_VALUE;
     private int roundRobinOffset;
     private boolean restored;
 
@@ -61,6 +64,9 @@ final class DirectorRuntime {
         mobEncounter.clear();
         fixedBreachAuthorized.clear();
         spawnsThisSecond = 0;
+        spawnsThisTick = 0;
+        rateTick = Long.MIN_VALUE;
+        rateSecond = Long.MIN_VALUE;
         roundRobinOffset = 0;
         restored = false;
     }
@@ -71,10 +77,17 @@ final class DirectorRuntime {
     }
 
     void tick(MinecraftServer server) {
-        if (!restored) { restore(server); restored = true; }
+        if (!restored) {
+            restore(server); restored = true;
+            // Reserve legacy offspring and identify existing heavies before any resumed packet.
+            for (UUID id : List.copyOf(directorMobs)) {
+                Entity entity = findEntity(server, id);
+                if (entity instanceof Mob mob) DirectorLineages.observe(mob);
+            }
+        }
         long now = server.overworld().getGameTime();
+        ensureRateWindow(server);
         if (now % 20L == 0L) {
-            spawnsThisSecond = 0;
             cleanupMobs(server);
             updateInjuryRelief(server);
             updatePressure(server, now);
@@ -100,6 +113,7 @@ final class DirectorRuntime {
             tag.putLong("LastPacket", e.lastPacketAt); tag.putInt("Remaining", e.remainingBudget); tag.putInt("Spent", e.spentBudget);
             tag.putInt("NextSector", e.nextSector); tag.putString("SuspendedPhase", e.suspendedPhase.name()); tag.putLong("SuspendedTicks", e.suspendedTicks);
             tag.putString("Suspension", e.suspensionReason); tag.putString("Failure", e.lastFailure);
+            tag.putString("LastSpawnHabitat", e.lastSpawnHabitat);
             tag.putInt("Warning", e.profile.warningTicks()); tag.putInt("Surge", e.profile.surgeTicks()); tag.putInt("Recovery", e.profile.recoveryTicks());
             tag.putInt("Budget", e.profile.budgetPerPlayer()); tag.putInt("Active", e.profile.activeTargetPerPlayer()); tag.putInt("Interval", e.profile.packetIntervalTicks()); tag.putBoolean("Directions", e.profile.maximizeDirections());
             tag.putInt("Queued", e.queuedSpawns); tag.putInt("PacketSector", e.packetTelegraphSector);
@@ -138,6 +152,7 @@ final class DirectorRuntime {
             EcologyRegistry.Blend blend = restoredBlend(t);
             Encounter e = new Encounter(t.getUUID("Id"), t.hasUUID("Family") ? t.getUUID("Family") : t.getUUID("Id"), people, blend, t.getDouble("Depth"), profile, t.getLong("PhaseUntil"), t.getInt("Remaining"), t.getInt("Spent"));
             try { e.phase = DirectorPolicy.Phase.valueOf(t.getString("Phase")); } catch (IllegalArgumentException ignored) { continue; }
+            e.lastSpawnHabitat = t.contains("LastSpawnHabitat") ? t.getString("LastSpawnHabitat") : "legacy";
             e.lastPacketAt = t.getLong("LastPacket"); e.nextSector = t.getInt("NextSector"); e.suspendedTicks = t.getLong("SuspendedTicks"); e.suspensionReason = t.getString("Suspension"); e.lastFailure = t.getString("Failure");
             CompoundTag counts = t.getCompound("Counts"); for (String key : counts.getAllKeys()) try { e.encounterCounts.put(new ResourceLocation(key), counts.getInt(key)); } catch (RuntimeException ignored) { }
             CompoundTag packetCounts = t.getCompound("PacketCounts");
@@ -189,6 +204,9 @@ final class DirectorRuntime {
     void registerMob(Mob mob) {
         if (SpawnLocator.isDirectorMob(mob)) {
             directorMobs.add(mob.getUUID());
+            DirectorLineages.observe(mob);
+            UUID owner = DirectorLineages.encounterOf(mob);
+            if (owner != null && encounters.containsKey(owner)) mobEncounter.put(mob.getUUID(), owner);
             SpawnLocator.restoreDirectorMob(mob);
         }
     }
@@ -196,6 +214,75 @@ final class DirectorRuntime {
     void removeMob(UUID id) { directorMobs.remove(id); mobEncounter.remove(id); }
 
     int activeDirectorMobCount() { return directorMobs.size(); }
+    boolean restored() { return restored; }
+
+    private void ensureRateWindow(MinecraftServer server) {
+        long tick = server.overworld().getGameTime();
+        if (rateTick != tick) { rateTick = tick; spawnsThisTick = 0; }
+        long second = Math.floorDiv(tick, 20);
+        if (rateSecond != second) { rateSecond = second; spawnsThisSecond = 0; }
+    }
+
+    private int admissionAllowance(MinecraftServer server) {
+        ensureRateWindow(server);
+        return DirectorPolicy.globalSpawnAllowance(Math.max(0, DirectorConfig.MAX_SPAWNS_PER_TICK.get() - spawnsThisTick),
+                DirectorConfig.MAX_SPAWNS_PER_SECOND.get(), spawnsThisSecond,
+                DirectorConfig.GLOBAL_DIRECTOR_CAP.get(), directorMobs.size() + DirectorLineages.pending(server));
+    }
+
+    boolean reserveAdmission(MinecraftServer server) {
+        if (admissionAllowance(server) <= 0) return false;
+        // Count real insertion attempts, including rollbacks, so failures cannot multiply work.
+        spawnsThisTick++;
+        spawnsThisSecond++;
+        return true;
+    }
+
+    RootCharge reserveRootCost(UUID encounterId, int cost) {
+        if (encounterId == null || encounterId.equals(new UUID(0, 0))) return new RootCharge(() -> {});
+        Encounter encounter = encounters.get(encounterId);
+        if (encounter == null || cost > encounter.remainingBudget) return null;
+        encounter.remainingBudget -= cost;
+        encounter.spentBudget += cost;
+        return new RootCharge(() -> {
+            encounter.remainingBudget += cost;
+            encounter.spentBudget -= cost;
+        });
+    }
+
+    static final class RootCharge implements AutoCloseable {
+        private final Runnable rollback;
+        private boolean committed, closed;
+        RootCharge(Runnable rollback) { this.rollback = rollback; }
+        void commit() {
+            if (closed) throw new IllegalStateException("Closed root admission");
+            committed = true;
+        }
+        @Override public void close() {
+            if (closed) return;
+            closed = true;
+            if (!committed) rollback.run();
+        }
+    }
+
+    void descendantAdded(Mob mob, UUID encounter) {
+        registerMob(mob);
+        if (encounters.containsKey(encounter)) mobEncounter.put(mob.getUUID(), encounter);
+    }
+
+    LegacyOwner reserveLegacy(Mob mob, int requestedCredits) {
+        UUID id = mobEncounter.get(mob.getUUID());
+        Encounter encounter = id == null ? null : encounters.get(id);
+        int granted = encounter == null ? 0 : Math.min(requestedCredits, Math.max(0, encounter.remainingBudget));
+        if (encounter != null) { encounter.remainingBudget -= granted; encounter.spentBudget += granted; }
+        boolean heavy = EcologyRegistry.INSTANCE.definitions().values().stream().flatMap(e -> e.roster().stream())
+                .anyMatch(e -> e.entity().equals(ForgeRegistries.ENTITY_TYPES.getKey(mob.getType()))
+                    && e.role() == EcologyDefinition.Role.HEAVY);
+        return new LegacyOwner(encounter == null ? new UUID(0, 0) : encounter.id,
+                encounter == null ? mob.getUUID() : encounter.family, granted, heavy);
+    }
+
+    record LegacyOwner(UUID encounter, UUID family, int credits, boolean heavy) {}
 
     void playerLoggedIn(ServerPlayer player) {
         fixedBreachAuthorized.loggedIn(player.getUUID(), player.serverLevel().dimensionType().natural(),
@@ -254,7 +341,14 @@ final class DirectorRuntime {
                 + " suspension=" + (encounter == null || encounter.phase != DirectorPolicy.Phase.SUSPENDED
                     ? "none" : encounter.suspensionReason)
                 + " last_failure=" + (encounter == null ? "none" : encounter.lastFailure)
-                + " route_failures=" + (track == null ? 0 : track.probeFailures());
+                + " route_failures=" + (track == null ? 0 : track.probeFailures())
+                + " geology=" + GeologicalRegistry.INSTANCE.sample(player.serverLevel(), player.blockPosition()).label()
+                + " geology_samples=" + GeologicalRegistry.INSTANCE.sample(player.serverLevel(), player.blockPosition()).mappedSamples()
+                + " geology_fallback=" + GeologicalRegistry.INSTANCE.sample(player.serverLevel(), player.blockPosition()).fallback()
+                + " last_spawn_habitat=" + (encounter == null ? "none" : encounter.lastSpawnHabitat)
+                + " legacy_blend_usage=timing_and_unmapped_fallback"
+                + " geology_reload_failure=" + GeologicalRegistry.INSTANCE.reloadFailure()
+                + DirectorLineages.inspect(player.server);
     }
 
     private void updatePressure(MinecraftServer server, long now) {
@@ -465,8 +559,10 @@ final class DirectorRuntime {
         List<Integer> weights = participants.stream().map(List::size).toList();
         int[] remaining = DirectorPolicy.allocateConserved(encounter.remainingBudget, weights);
         int[] spent = DirectorPolicy.allocateConserved(encounter.spentBudget, weights);
+        List<Map<ResourceLocation, Integer>> counts = SpeciesCounts.partition(encounter.encounterCounts, weights);
         for (int index = 0; index < participants.size(); index++) {
             Encounter child = Encounter.split(encounter, participants.get(index), remaining[index], spent[index]);
+            child.encounterCounts.putAll(counts.get(index));
             children.add(child);
             child.participants.forEach(player -> participantEncounter.put(player, child.id));
         }
@@ -489,9 +585,7 @@ final class DirectorRuntime {
     }
 
     private void processSpawnQueue(MinecraftServer server, long now) {
-        int allowance = DirectorPolicy.globalSpawnAllowance(DirectorConfig.MAX_SPAWNS_PER_TICK.get(),
-                DirectorConfig.MAX_SPAWNS_PER_SECOND.get(), spawnsThisSecond,
-                DirectorConfig.GLOBAL_DIRECTOR_CAP.get(), directorMobs.size());
+        int allowance = admissionAllowance(server);
         if (allowance <= 0 || encounters.isEmpty()) return;
         List<Encounter> active = encounters.values().stream()
                 .filter(encounter -> encounter.phase == DirectorPolicy.Phase.SURGE
@@ -500,6 +594,7 @@ final class DirectorRuntime {
                 .toList();
         if (active.isEmpty()) return;
         for (int attempt = 0; attempt < allowance; attempt++) {
+            if (admissionAllowance(server) <= 0) break;
             Encounter encounter = active.get(DirectorPolicy.roundRobinIndex(roundRobinOffset, attempt, active.size()));
             List<ServerPlayer> players = encounter.pursuitPlayers(server, this::eligible);
             if (players.isEmpty() || encounter.queuedSpawns <= 0 || encounter.packetTelegraphUntil >= 0L) continue;
@@ -509,13 +604,15 @@ final class DirectorRuntime {
                 encounter.queuedSpawns = 0;
                 continue;
             }
-            SpawnLocator.SpawnResult result = SpawnLocator.spawnAt(players.get(0).serverLevel(), players,
-                    encounter.blend, encounter.depth, random, warnedApproach, !encounter.heavySpawnedInPacket,
-                    encounter.remainingBudget, entry -> entry.allowsPacketCount(
-                            encounter.packetCounts.getOrDefault(entry.entity(), 0))
-                            && entry.allowsEncounterCount(
-                            encounter.encounterCounts.getOrDefault(entry.entity(), 0),
-                            encounter.participants.size()));
+            SpawnLocator.SpawnResult result = DirectorLineages.ownedBy(encounter.id, encounter.family, () ->
+                    SpawnLocator.spawnAt(players.get(0).serverLevel(), players,
+                            encounter.blend, encounter.depth, random, warnedApproach,
+                            !encounter.heavySpawnedInPacket && !DirectorLineages.hasHeavy(server, encounter.family),
+                            encounter.remainingBudget, entry -> entry.allowsPacketCount(
+                                    encounter.packetCounts.getOrDefault(entry.entity(), 0))
+                                    && entry.allowsEncounterCount(
+                                    encounter.encounterCounts.getOrDefault(entry.entity(), 0),
+                                    encounter.participants.size())));
             encounter.queuedSpawns--;
             if (!result.spawned()) {
                 // The warned corridor did not admit this selected mob. Cancel before direction changes.
@@ -533,10 +630,10 @@ final class DirectorRuntime {
                 encounter.packetCounts.merge(result.entity(), 1, Integer::sum);
                 encounter.encounterCounts.merge(result.entity(), 1, Integer::sum);
             }
-            encounter.remainingBudget = Math.max(0, encounter.remainingBudget - result.cost());
-            encounter.spentBudget += result.cost();
+            // RootAdmission prepaid base + lineage cost before native finalization;
+            // successful roots are already charged and must not be charged twice.
             encounter.lastFailure = "none";
-            spawnsThisSecond++;
+            encounter.lastSpawnHabitat = result.mob().getPersistentData().getString("DepthDirectorSpawnHabitat");
             if (encounter.queuedSpawns > 0) {
                 if (!beginPacketTelegraph(players.get(0).serverLevel(), players, encounter, now, true)) {
                     suspend(encounter, now, "warned_approach_unavailable");
@@ -675,6 +772,7 @@ final class DirectorRuntime {
         directorMobs.removeIf(id -> {
             Entity entity = findEntity(server, id);
             if (!(entity instanceof Mob mob)) { mobEncounter.remove(id); return true; }
+            DirectorLineages.observe(mob);
             SpawnLocator.restoreDirectorMob(mob);
             return false;
         });
@@ -791,6 +889,7 @@ final class DirectorRuntime {
         private final EcologyRegistry.Blend blend;
         private final double depth;
         private final DirectorPolicy.Profile profile;
+        private String lastSpawnHabitat = "none";
         private DirectorPolicy.Phase phase = DirectorPolicy.Phase.WARNING;
         private long phaseUntil;
         private long lastPacketAt = -1L;
@@ -848,6 +947,9 @@ final class DirectorRuntime {
             child.suspendedTicks = parent.suspendedTicks;
             child.suspensionReason = parent.suspensionReason;
             child.lastFailure = parent.lastFailure;
+            child.lastSpawnHabitat = parent.lastSpawnHabitat;
+            child.packetCounts.putAll(parent.packetCounts);
+            child.heavySpawnedInPacket = parent.heavySpawnedInPacket;
             child.pursuitTarget = participants.contains(parent.pursuitTarget) ? parent.pursuitTarget : child.pursuitTarget;
             return child;
         }
@@ -879,8 +981,11 @@ final class DirectorRuntime {
                     .filter(reason -> !"none".equals(reason)).findFirst().orElse("none");
             merged.pursuitTarget = family.stream().map(encounter -> encounter.pursuitTarget)
                     .filter(participants::contains).min(UUID::compareTo).orElse(merged.pursuitTarget);
-            family.forEach(encounter -> encounter.encounterCounts.forEach((entity, count) ->
-                    merged.encounterCounts.merge(entity, count, Integer::sum)));
+            family.forEach(encounter -> {
+                encounter.encounterCounts.forEach((entity, count) -> merged.encounterCounts.merge(entity, count, Math::addExact));
+                encounter.packetCounts.forEach((entity, count) -> merged.packetCounts.merge(entity, count, Math::max));
+            });
+            merged.lastSpawnHabitat = template.lastSpawnHabitat;
             return merged;
         }
 

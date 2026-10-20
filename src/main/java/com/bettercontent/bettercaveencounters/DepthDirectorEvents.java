@@ -9,6 +9,7 @@ import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
@@ -21,6 +22,7 @@ public final class DepthDirectorEvents {
     @SubscribeEvent
     public static void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(EcologyRegistry.INSTANCE);
+        event.addListener(GeologicalRegistry.INSTANCE);
         event.addListener(WaterwayRegistry.INSTANCE);
     }
 
@@ -41,10 +43,18 @@ public final class DepthDirectorEvents {
 
     @SubscribeEvent
     public static void livingDied(LivingDeathEvent event) {
-        if (event.getEntity() instanceof Mob mob) DirectorRuntime.INSTANCE.removeMob(mob.getUUID());
+        if (event.getEntity() instanceof Mob mob) {
+            DirectorLineages.died(mob);
+            DirectorRuntime.INSTANCE.removeMob(mob.getUUID());
+        }
         if (event.getEntity() instanceof ServerPlayer player) {
             DirectorRuntime.INSTANCE.playerDied(player.server, player.getUUID());
         }
+    }
+
+    @SubscribeEvent
+    public static void entityLeft(EntityLeaveLevelEvent event) {
+        if (!event.getLevel().isClientSide()) DirectorLineages.removed(event.getEntity());
     }
 
     @SubscribeEvent
@@ -77,6 +87,7 @@ public final class DepthDirectorEvents {
     @SubscribeEvent
     public static void serverStopped(ServerStoppedEvent event) {
         DirectorRuntime.INSTANCE.reset();
+        GeologicalRegistry.INSTANCE.clearCache();
     }
 
     @SubscribeEvent

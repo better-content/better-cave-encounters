@@ -136,6 +136,9 @@ public final class DepthDirectorWorldGameTests {
             for (EcologyDefinition ecology : ecologies) {
                 for (EcologyDefinition.Entry entry : ecology.roster()) {
                     EcologyDefinition single = singleEntry(ecology, entry);
+                    // Isolated catalogue admissions are not a single live packet. The
+                    // dedicated geological fixture separately exercises production caps.
+                    ProductionAccess.reset(DIRECTOR_SEED ^ entry.entity().hashCode());
                     WorldSpawn result = ProductionAccess.spawnAt(level, List.of(cataloguePlayer),
                             new EcologyRegistry.Blend(single, null, 0.0), 1.0,
                             RandomSource.create(DIRECTOR_SEED ^ entry.entity().hashCode()), candidate, true, 64);
@@ -457,7 +460,7 @@ public final class DepthDirectorWorldGameTests {
         }
     }
 
-    private static void buildArena(ServerLevel level, BlockPos center) {
+    public static void buildArena(ServerLevel level, BlockPos center) {
         forceFixtureChunks(level, center, 5);
         Set<Xz> cells = new HashSet<>();
         carveDisc(cells, center.getX(), center.getZ(), 5.0);
@@ -539,7 +542,7 @@ public final class DepthDirectorWorldGameTests {
                 center.getZ() + (int) Math.round(Math.sin(angle) * radius));
     }
 
-    private static BlockPos roomPosition(BlockPos center, int sector, int radius) {
+    public static BlockPos roomPosition(BlockPos center, int sector, int radius) {
         return point(center, (sector + 0.5) * Math.PI / 4.0, radius);
     }
 
