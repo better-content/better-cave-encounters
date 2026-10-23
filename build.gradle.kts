@@ -474,7 +474,7 @@ tasks.matching { it.name == "runGameTestServer" }.configureEach {
 
 tasks.register("headlessGameTest") {
     group = "verification"
-    dependsOn(tasks.named("runGameTestServer"))
+    dependsOn("runGameTestServer")
 }
 tasks.register("verifyFast") {
     group = "verification"
@@ -488,7 +488,7 @@ tasks.register("verifyFull") {
 tasks.register("verifyWorld") {
     group = "verification"
     description = "Runs retained full-cadence and pinned geological/native-population qualification fixtures."
-    dependsOn(tasks.named("verifyFull"), tasks.named("runWorldGameTestServer"), tasks.named("runGeologyGameTestServer"))
+    dependsOn("verifyFull", "runWorldGameTestServer", "runGeologyGameTestServer")
 }
 fun requireWorldProfileCompletion(directory: File) {
     val latest = directory.resolve("logs/latest.log")
@@ -503,11 +503,11 @@ fun requireWorldProfileCompletion(directory: File) {
 }
 tasks.matching { it.name == "runWorldGameTestServer" }.configureEach {
     doLast { requireWorldProfileCompletion(worldTestRun) }
-    mustRunAfter(tasks.named("verifyFull"))
+    mustRunAfter("verifyFull")
 }
 tasks.matching { it.name == "runGeologyGameTestServer" }.configureEach {
     doLast { requireWorldProfileCompletion(geologyTestRun) }
-    mustRunAfter(tasks.named("verifyFull"), tasks.named("runWorldGameTestServer"))
+    mustRunAfter("verifyFull", "runWorldGameTestServer")
 }
 
 // Nonshipping policy preparation/proof has no production RunConfig or archive surface.

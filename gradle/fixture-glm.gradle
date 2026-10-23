@@ -98,7 +98,8 @@ tasks.named('verifyFast').configure { dependsOn(prepare) }
 ['prepareRetainedWorldTestRun', 'prepareRetainedGeologyTestRun'].each { name -> tasks.named(name).configure { dependsOn(prepare) } }
 tasks.matching { it.name.startsWith('prepareRunWorldGameTestServer') || it.name.startsWith('prepareRunGeologyGameTestServer') }.configureEach { dependsOn(prepare) }
 profiles.each { name, value ->
-    tasks.named('run' + value.run.capitalize()).configure {
+    def runTaskName = 'run' + value.run.capitalize()
+    tasks.matching { it.name == runTaskName }.configureEach {
         dependsOn(prepare, 'verifyWorldFixtureArchives')
         doFirst {
             verify(new File(base, "${name}/manifest.json"))
