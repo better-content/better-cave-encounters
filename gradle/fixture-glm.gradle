@@ -1,0 +1,140 @@
+// Exact own-profile SOURCE preparation; no manual task-artifact snapshot or production mutation.
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+
+def scopeFile = file('src/worldGameTest/glm-profiles.json')
+def scope = new JsonSlurper().parse(scopeFile)
+def token = project.ext.caveFixtureGlmToken
+def packRoot = project.ext.caveFixtureGlmPackRoot
+def base = file("build/fixture-glm/${token}")
+def rawWorld = configurations.create('pinnedWorldGlmArchives') { transitive = false }
+scope.profiles.legacy.originals.each { dependencies.add(rawWorld.name, it.coordinate) }
+def glue = configurations.create('pinnedFixtureGlmGlue') { transitive = false }
+dependencies.add(glue.name, 'io.github.llamalad7:mixinextras-forge:0.5.4')
+dependencies.add(glue.name, 'io.github.llamalad7:mixinextras-common:0.5.4')
+// Only these two existing full profiles get the nonshipping pack/observer. Ordinary native12,
+// client/server, main archives and production runs have neither properties nor Mixin config.
+def profiles = [legacy: [run: 'worldGameTestServer', dir: project.ext.caveFixtureGlmWorldRun],
+                geology: [run: 'geologyGameTestServer', dir: project.ext.caveFixtureGlmGeologyRun]]
+profiles.each { name, value ->
+    def run = minecraft.runs.getByName(value.run)
+    run.args('--mixin', 'bc_cave_fixture_glm.mixins.json')
+    run.property('bc.cave.fixtureGlm.manifest', new File(base, "${name}/manifest.json").absolutePath)
+    run.property('bc.cave.fixtureGlm.manifest.attempt', token)
+    run.property('bc.cave.fixtureGlm.manifest.proof', new File(value.dir, 'fixture-glm-load-proof.json').absolutePath)
+}
+['worldGameTest', 'geologyGameTest'].each { name ->
+    tasks.named(sourceSets[name].processResourcesTaskName).configure {
+        from(scopeFile) { rename { 'bc_cave_fixture_glm_scope.json' } }
+    }
+}
+def verify = { File manifest ->
+    project.exec { commandLine('python3', '-B', 'gradle/prepare-fixture-glm.py', '--verify', manifest.absolutePath) }
+}
+def prepare = tasks.register('prepareFixtureGlmSnapshots') {
+    group = 'verification'
+    doLast {
+        def normalized = { String c -> c.replace('@jar', '').replaceAll(/_mapped_.*/, '') }
+        // Bind current configured SDK roots, not a manually supplied conversation manifest.
+        def configuredWorld = configurations.worldGameTestRuntimeOnly.allDependencies
+            .findAll { !(it.group in ['bettercontent.local', 'bettercontent.notices.local']) }
+            .collect { normalized("${it.group}:${it.name}:${it.version}") }.sort()
+        def expectedWorld = scope.profiles.legacy.originals.collect { normalized(it.coordinate) }.sort()
+        if (configuredWorld != expectedWorld) throw new GradleException('Actual owning world SDK graph differs from reviewed own GLM domain')
+        def qualification = new JsonSlurper().parse(file('src/worldGameTest/resources/geological-qualification.json'))
+        if (qualification.archives.collect { it.coordinate }.sort() != scope.profiles.geology.originals.collect { it.coordinate }.sort())
+            throw new GradleException('Actual owning geology SDK graph differs')
+        minecraft.runs.each { run ->
+            boolean selected = profiles.values().any { it.run == run.name }
+            if (run.args.count { it == 'bc_cave_fixture_glm.mixins.json' } != (selected ? 1 : 0))
+                throw new GradleException('Fixture GLM Mixin escaped exact owning RunConfigs')
+            if (run.properties.keySet().any { it.startsWith('bc.cave.fixtureGlm.') } != selected)
+                throw new GradleException('Fixture GLM property escaped owning RunConfigs')
+        }
+        def roots = [:]
+        [legacy: rawWorld, geology: configurations.pinnedGeologicalArchives].each { name, config ->
+            def artifacts = config.resolvedConfiguration.resolvedArtifacts
+            roots[name] = scope.profiles[name].originals.collect { spec ->
+                def artifact = artifacts.findAll { normalized(it.moduleVersion.id.toString()) == normalized(spec.coordinate) }
+                if (artifact.size() != 1) throw new GradleException('Missing/duplicate actual original SDK ' + spec.coordinate)
+                [coordinate: spec.coordinate, path: artifact[0].file.canonicalPath]
+            }
+        }
+        def forge = configurations.compileClasspath.resolve().findAll {
+            it.name.startsWith('forge-') && it.name.contains('_mapped_official_') && it.name.endsWith('.jar')
+        }
+        if (forge.size() != 1) throw new GradleException('Missing/duplicate actual owning mapped Forge SDK')
+        def supplemental = [[coordinate: 'mappedForgeSdk', path: forge[0].canonicalPath]]
+        glue.resolvedConfiguration.resolvedArtifacts.each {
+            supplemental << [coordinate: it.moduleVersion.id.toString(), path: it.file.canonicalPath]
+        }
+        project.ext.caveFixtureGlmProviders.each { artifact, path ->
+            supplemental << [coordinate: artifact, path: file(path).canonicalPath]
+        }
+        def bindings = [profiles: roots, supplemental: supplemental]
+        def bindingFile = new File(base, 'bindings.json')
+        if (bindingFile.exists()) {
+            if (new JsonSlurper().parse(bindingFile) != bindings) throw new GradleException('Immutable fixture bindings differ; choose a fresh invocation token')
+        } else {
+            base.mkdirs()
+            java.nio.file.Files.writeString(bindingFile.toPath(), JsonOutput.prettyPrint(JsonOutput.toJson(bindings)) + '\n', java.nio.file.StandardOpenOption.CREATE_NEW)
+        }
+        profiles.each { name, value ->
+            def output = new File(base, name)
+            def manifest = new File(output, 'manifest.json')
+            if (!manifest.exists()) project.exec {
+                commandLine('python3', '-B', 'gradle/prepare-fixture-glm.py', '--bindings', bindingFile.absolutePath,
+                    '--root', file(packRoot).absolutePath, '--profile', name, '--output', output.absolutePath)
+            }
+            verify(manifest)
+            def hash = MessageDigest.getInstance('SHA-256').digest(manifest.bytes).encodeHex().toString()
+            minecraft.runs.getByName(value.run).property('bc.cave.fixtureGlm.manifest.sha256', hash)
+        }
+        project.exec { commandLine('python3', '-B', 'gradle/test-fixture-glm.py', '--bindings', bindingFile.absolutePath, '--root', file(packRoot).absolutePath) }
+    }
+}
+tasks.named('verifyFast').configure { dependsOn(prepare) }
+['prepareRetainedWorldTestRun', 'prepareRetainedGeologyTestRun'].each { name -> tasks.named(name).configure { dependsOn(prepare) } }
+tasks.matching { it.name.startsWith('prepareRunWorldGameTestServer') || it.name.startsWith('prepareRunGeologyGameTestServer') }.configureEach { dependsOn(prepare) }
+profiles.each { name, value ->
+    tasks.named('run' + value.run.capitalize()).configure {
+        dependsOn(prepare, 'verifyWorldFixtureArchives')
+        doFirst {
+            verify(new File(base, "${name}/manifest.json"))
+            if (new File(value.dir, 'fixture-glm-load-proof.json').exists()) throw new GradleException('Refusing stale native GLM proof')
+        }
+        doLast {
+            verify(new File(base, "${name}/manifest.json"))
+            def proof = new JsonSlurper().parse(new File(value.dir, 'fixture-glm-load-proof.json'))
+            if (proof.schema != 'bc.cave.fixture_glm_load_proof.v1' || proof.attempt != token || proof.profile != name ||
+                proof.orderedIds != scope.profiles[name].ordered_ids || proof.actualDecodedCount != scope.profiles[name].ordered_ids.size() ||
+                proof.actualCodecIdentitiesAndOrder != true || proof.requiredFixedTopSelected != true || proof.gameplayEffectsAccepted != false ||
+                !(proof.originalApplyReturnsProved in 1..4)) throw new GradleException('Incomplete actual own-domain GLM loading proof')
+        }
+    }
+}
+// The isolated geology KubeJS copy receives its explicit38 projection; Root226 remains untouched.
+tasks.named('prepareGeologicalInputs').configure {
+    dependsOn(prepare)
+    doLast {
+        def source = new File(base, 'geology/pack/data/forge/loot_modifiers/global_loot_modifiers.json')
+        def destination = new File(project.ext.caveFixtureGlmGeologyRun, 'kubejs/data/forge/loot_modifiers/global_loot_modifiers.json')
+        // Outside KubeJS data: retaining a parent *.json under loot_modifiers would itself
+        // become an invalid modifier definition during SimpleJsonResourceReloadListener scan.
+        def parent = new File(project.ext.caveFixtureGlmGeologyRun, '.retained-source-inputs/root-parent-global-loot-modifiers.json')
+        parent.parentFile.mkdirs()
+        java.nio.file.Files.copy(destination.toPath(), parent.toPath())
+        java.nio.file.Files.write(destination.toPath(), source.bytes, java.nio.file.StandardOpenOption.WRITE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING)
+        def originalReceipt = new File(project.ext.caveFixtureGlmGeologyRun, 'qualification-inputs.json')
+        def manifest = new JsonSlurper().parse(new File(base, 'geology/manifest.json'))
+        def receipt = [schema: 'bc.cave.isolated_glm_projection.v1',
+            original_input_receipt_sha256: MessageDigest.getInstance('SHA-256').digest(originalReceipt.bytes).encodeHex().toString(),
+            canonical_root_index_sha256: manifest.canonical_root_index_sha256,
+            isolated_index_sha256: manifest.index_sha256, ordered_ids: manifest.projection.ordered_ids,
+            original_parent_retained: parent.canonicalPath, production_root_modified: false]
+        // Retain original qualification-inputs.json byte-for-byte, never retag its Root hashes.
+        def proof = new File(project.ext.caveFixtureGlmGeologyRun, 'qualification-glm-projection.json')
+        java.nio.file.Files.writeString(proof.toPath(), JsonOutput.prettyPrint(JsonOutput.toJson(receipt)) + '\n', java.nio.file.StandardOpenOption.CREATE_NEW)
+    }
+}

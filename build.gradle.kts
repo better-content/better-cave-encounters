@@ -1,15 +1,19 @@
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
+import java.util.zip.ZipFile
 
 plugins {
     idea
     jacoco
     `maven-publish`
     id("net.minecraftforge.gradle") version "6.0.54"
+    id("org.spongepowered.mixin") version "0.7.38"
 }
 
 group = property("mod_group_id") as String
@@ -21,7 +25,15 @@ java {
     withSourcesJar()
 }
 
+// Same owning mod/package at runtime, but never part of the shipping main source set/JAR.
+val nativeGameTest = sourceSets.create("nativeGameTest") {
+    compileClasspath += sourceSets.main.get().output + configurations.compileClasspath.get()
+    runtimeClasspath += output + compileClasspath
+}
+
 val worldGameTest = sourceSets.create("worldGameTest") {
+    // Keep the authored historical descriptor, but never expose a second JPMS mod.
+    resources.exclude("META-INF/mods.toml", "data/better_cave_encounters_world_tests/loot_tables/policy_sentinel.json")
     compileClasspath += sourceSets.main.get().output + configurations.compileClasspath.get()
     runtimeClasspath += output + compileClasspath
 }
@@ -29,8 +41,20 @@ val worldGameTest = sourceSets.create("worldGameTest") {
 val geologyGameTest = sourceSets.create("geologyGameTest") {
     java.srcDir("src/worldGameTest/java")
     resources.srcDir("src/worldGameTest/resources")
+    resources.exclude("META-INF/mods.toml")
     compileClasspath += sourceSets.main.get().output + configurations.compileClasspath.get()
     runtimeClasspath += output + compileClasspath
+}
+val rootContractSources = sourceSets.create("rootContractTest") {
+    java.srcDir("src/worldGameTest/java")
+    java.include("**/CatalogueRootAccount.java", "**/CatalogueRootAccountTest.java", "**/NativeInitialRootAbiTest.java", "**/FixtureGlmAbiTest.java")
+    compileClasspath += sourceSets.main.get().output + sourceSets.test.get().compileClasspath
+    runtimeClasspath += output + compileClasspath + configurations.testRuntimeClasspath.get() + worldGameTest.output
+}
+val rootContractTest = tasks.register<Test>("rootContractTest") {
+    testClassesDirs = rootContractSources.output.classesDirs
+    classpath = rootContractSources.runtimeClasspath
+    useJUnitPlatform()
 }
 val qualification = JsonSlurper().parse(file("src/worldGameTest/resources/geological-qualification.json")) as Map<*, *>
 val geologicalArchives = (qualification["archives"] as List<*>).map { it as Map<*, *> }
@@ -38,6 +62,17 @@ val geologicalPackInputs = (qualification["pack_inputs"] as List<*>).map { it.to
 val geologicalPackRoot = providers.environmentVariable("BC_PACK_ROOT").orNull?.let(::file)
     ?: file("../../better-content-modpack")
 val pinnedGeologicalArchives = configurations.create("pinnedGeologicalArchives") { isTransitive = false }
+val worldProfileInputFile = file("src/worldGameTest/world-profile-inputs.json")
+val worldProfileInputs = JsonSlurper().parse(worldProfileInputFile) as Map<*, *>
+val worldDeepVoid = worldProfileInputs["deep_void"] as Map<*, *>
+val pinnedWorldDeepVoid = configurations.create("pinnedWorldDeepVoid") { isTransitive = false }
+rootContractTest.configure {
+    dependsOn(tasks.processResources, worldGameTest.classesTaskName)
+    doFirst {
+        systemProperty("bc.deepVoidOriginalArchive", pinnedWorldDeepVoid.singleFile.absolutePath)
+        systemProperty("bc.initialRootRefmap", layout.buildDirectory.file("resources/main/better_cave_encounters.refmap.json").get().asFile.absolutePath)
+    }
+}
 val nativeFixtureId = providers.gradleProperty("bc.nativeFixtureId")
     .orElse("${Instant.now().toEpochMilli()}-${UUID.randomUUID().toString().take(8)}").get()
 require(nativeFixtureId.matches(Regex("[A-Za-z0-9_-]{1,80}"))) { "Unsafe native fixture ID" }
@@ -59,6 +94,7 @@ minecraft {
         create("client")
         create("server") { arg("--nogui") }
         val gameTestServer = create("gameTestServer") {
+            mods { getByName(property("mod_id") as String) { source(nativeGameTest) } }
             workingDirectory(gameTestRun)
             property("forge.enableGameTest", "true")
             property("forge.gameTestServer", "true")
@@ -77,18 +113,19 @@ minecraft {
             property("mixin.env.refMapRemappingFile", file("build/createSrgToMcp/output.srg").absolutePath)
             arg("--nogui")
             mods {
-                create("better_cave_encounters_world_tests") { source(worldGameTest) }
+                getByName(property("mod_id") as String) { source(worldGameTest) }
             }
         }
         create("geologyGameTestServer") {
             parent(gameTestServer)
             workingDirectory(geologyTestRun)
-            property("forge.enabledGameTestNamespaces", "better_cave_encounters_geology_tests")
+            // Forge filters the explicit template namespace, not the logical profile label.
+            property("forge.enabledGameTestNamespaces", "better_cave_encounters_world_tests")
             property("bc.geologyQualification", "true")
             property("mixin.env.remapRefMap", "true")
             property("mixin.env.refMapRemappingFile", file("build/createSrgToMcp/output.srg").absolutePath)
             arg("--nogui")
-            mods { create("better_cave_encounters_world_tests") { source(geologyGameTest) } }
+            mods { getByName(property("mod_id") as String) { source(geologyGameTest) } }
         }
     }
 }
@@ -155,12 +192,18 @@ dependencies {
     runtimeOnly(fg.deobf("bettercontent.local:better-compat-fixes:0.1.9"))
     runtimeOnly(fg.deobf("bettercontent.notices.local:better-gameplay-notices:1.0.0"))
     runtimeOnly("io.github.llamalad7:mixinextras-forge:0.5.4")
+    compileOnly("io.github.llamalad7:mixinextras-common:0.5.4")
+    annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
+    annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.4")
+    testCompileOnly("io.github.llamalad7:mixinextras-common:0.5.4")
     testCompileOnly(fg.deobf("bettercontent.local:better-compat-fixes:0.1.9"))
     testRuntimeOnly(fg.deobf("bettercontent.local:better-compat-fixes:0.1.9"))
 
     add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:born-in-chaos-686437:7917933"))
     add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:goety-586095:8087429"))
-    add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:deeper-and-darker-659011:5906086"))
+    // All six authored ecologies, including the current pinned Deep Void, are mandatory here.
+    add("worldGameTestRuntimeOnly", fg.deobf(worldDeepVoid["coordinate"].toString()))
+    add(pinnedWorldDeepVoid.name, worldDeepVoid["coordinate"].toString())
     add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:quark-243121:6427817"))
     add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:zeta-968868:7335229"))
     add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:tinkers-construct-74072:7449219"))
@@ -174,7 +217,7 @@ dependencies {
     add("worldGameTestRuntimeOnly", fg.deobf(
             "worldtest.enderman:endermanoverhaul-forge-1.20.1-1.0.4:yjxych8u@jar"))
     add("worldGameTestRuntimeOnly", fg.deobf("bettercontent.local:better-deaths-door:1.0.0"))
-    // Only declared current-pack archives, not the legacy world's extra Deeper and Darker fixture.
+    // Only declared current-pack geological archives; unused legacy Deeper and Darker is absent.
     geologicalArchives.forEach { archive ->
         val coordinate = archive["coordinate"].toString()
         add(pinnedGeologicalArchives.name, coordinate)
@@ -182,7 +225,30 @@ dependencies {
     }
 }
 
+mixin {
+    add(sourceSets.main.get(), "better_cave_encounters.refmap.json")
+    config("better_cave_encounters.mixins.json")
+}
+
+tasks.compileJava {
+    val actualRefmap = layout.buildDirectory.file("tmp/compileJava/compileJava-refmap.json")
+    outputs.file(actualRefmap)
+    // MixinExtras registers WrapOperation before Mixin's injector processor scans it.
+    options.compilerArgs.addAll(listOf("-processor", "com.llamalad7.mixinextras.ap.MixinExtrasAP,org.spongepowered.tools.obfuscation.MixinObfuscationProcessorInjection,org.spongepowered.tools.obfuscation.MixinObfuscationProcessorTargets"))
+    doLast {
+        check(actualRefmap.get().asFile.isFile) { "Initial-root Mixin processor did not produce its actual refmap" }
+        val text = actualRefmap.get().asFile.readText()
+        check(text.contains("DamnedInitialRootMixin") && text.contains("EntityType;m_262496_")) {
+            "Initial-root refmap must bind the actual production native EntityType.spawn invocation"
+        }
+    }
+}
+
 tasks.processResources {
+    dependsOn(tasks.compileJava)
+    from(layout.buildDirectory.file("tmp/compileJava/compileJava-refmap.json")) {
+        rename { "better_cave_encounters.refmap.json" }
+    }
     val props = mapOf(
         "minecraft_version" to project.property("minecraft_version"),
         "forge_version" to project.property("forge_version"),
@@ -194,7 +260,104 @@ tasks.processResources {
     filesMatching(listOf("META-INF/mods.toml", "pack.mcmeta")) { expand(props) }
 }
 
-tasks.named<Jar>("jar") { finalizedBy("reobfJar") }
+tasks.named<Jar>("jar") {
+    manifest.attributes("MixinConfigs" to "better_cave_encounters.mixins.json")
+    exclude("**/GeologicalDefinitionGameTests*", "native-case-inventory.json")
+    finalizedBy("reobfJar")
+}
+
+val nativeParserNamespace = property("mod_id").toString()
+val parserInventoryFile = file("src/nativeGameTest/resources/native-case-inventory.json")
+val parserInventory = JsonSlurper().parse(parserInventoryFile) as Map<*, *>
+val baselineParserCases = (parserInventory["baseline"] as List<*>).map { it.toString() }
+val migratedParserCases = (parserInventory["migrated"] as List<*>).map { it.toString() }
+val requiredParserCases = baselineParserCases + migratedParserCases
+fun requireNativeParserInventory(names: List<String>, namespace: String) {
+    require(namespace == nativeParserNamespace && namespace == parserInventory["namespace"]) { "Wrong native parser namespace" }
+    require(baselineParserCases.size == 10 && migratedParserCases.size == 2 && parserInventory["required_count"] == 12) { "Native parser inventory must be original 10 plus two new cases" }
+    require(names.size == 12 && names.toSet().size == 12 && names.toSet() == requiredParserCases.toSet()) { "Missing/extra/aliased native parser assertion case" }
+}
+fun requireParserArchiveEntries(entries: Set<String>) {
+    require("com/bettercontent/bettercaveencounters/GeologicalDefinition.class" in entries) { "Production parser missing from archive" }
+    require(entries.none { it.contains("GeologicalDefinitionGameTests") || it == "native-case-inventory.json" }) { "Nonshipping parser fixture leaked into runtime archive" }
+}
+val verifyNativeParserProfile = tasks.register("verifyNativeParserProfile") {
+    dependsOn(nativeGameTest.classesTaskName)
+    inputs.file(parserInventoryFile)
+    doLast {
+        val sources = listOf(file("src/main/java/com/bettercontent/bettercaveencounters/DepthDirectorGameTests.java"),
+            file("src/nativeGameTest/java/com/bettercontent/bettercaveencounters/GeologicalDefinitionGameTests.java"))
+        val names = sources.flatMap { source ->
+            val text = source.readText()
+            require(text.contains("@GameTestHolder(DepthDirectorMod.MOD_ID)")) { "Native fixture namespace changed" }
+            Regex("""@GameTest\([^)]*\)\s*public static void (\w+)\(""").findAll(text).map { it.groupValues[1] }.toList()
+        }
+        requireNativeParserInventory(names, nativeParserNamespace)
+        fun rejects(body: () -> Unit) {
+            var rejected = false
+            try { body() } catch (expected: IllegalArgumentException) { rejected = true }
+            check(rejected) { "Native fixture guard accepted a synthetic defect" }
+        }
+        rejects { requireNativeParserInventory(names.dropLast(1), nativeParserNamespace) }
+        rejects { requireNativeParserInventory(names + "unexpectedAlias", nativeParserNamespace) }
+        rejects { requireNativeParserInventory(names, "wrong_namespace") }
+        val production = setOf("com/bettercontent/bettercaveencounters/GeologicalDefinition.class")
+        requireParserArchiveEntries(production)
+        rejects { requireParserArchiveEntries(production + "com/bettercontent/bettercaveencounters/GeologicalDefinitionGameTests.class") }
+        rejects { requireParserArchiveEntries(emptySet()) }
+    }
+}
+val verifyNativeParserArchive = tasks.register("verifyNativeParserArchive") {
+    dependsOn(tasks.named("reobfJar"))
+    doLast {
+        ZipFile(layout.buildDirectory.file("reobfJar/output.jar").get().asFile).use { zip ->
+            requireParserArchiveEntries(zip.entries().asSequence().map { it.name }.toSet())
+        }
+    }
+}
+
+// Nonshipping world classes/resources must stay out of both published archive kinds.
+val nonshippingWorldEntries = listOf("**/DepthDirectorWorldGameTests*", "**/GeologicalWorldGameTests*",
+    "**/DepthDirectorWorldTestMod*", "**/CatalogueRoot*", "**/CaveFixtureGlm*", "**/FixtureGlmLoadMixin*",
+    "bc_cave_fixture_glm*", "glm-profiles.json", "world-case-inventory.json", "world-initial-root-adaptations.json", "geological-qualification.json",
+    "data/better_cave_encounters_world_tests/**")
+tasks.named<Jar>("jar") { exclude(nonshippingWorldEntries) }
+tasks.named<Jar>("sourcesJar") {
+    exclude(nonshippingWorldEntries)
+    exclude("**/GeologicalDefinitionGameTests*", "native-case-inventory.json")
+}
+val verifyWorldProfilePins = tasks.register("verifyWorldProfilePins") {
+    inputs.files(worldProfileInputFile, geologicalPackRoot.resolve(worldDeepVoid["pin"].toString()))
+    doLast {
+        project.exec {
+            commandLine("python3", "-B", "gradle/verify-world-fixture.py",
+                "--root-pin", geologicalPackRoot.resolve(worldDeepVoid["pin"].toString()).absolutePath,
+                "--deep-void-archive", pinnedWorldDeepVoid.singleFile.absolutePath,
+                "--pin-proof", layout.buildDirectory.file("verification/world-profile-pin-proof.json").get().asFile.absolutePath)
+        }
+    }
+}
+val verifyWorldFixtureProfile = tasks.register("verifyWorldFixtureProfile") {
+    dependsOn(worldGameTest.classesTaskName, geologyGameTest.classesTaskName, verifyWorldProfilePins)
+    inputs.files(fileTree("src/worldGameTest"), file("gradle/verify-world-fixture.py"))
+    doLast {
+        project.exec {
+            commandLine("python3", "-B", "gradle/verify-world-fixture.py",
+                "--world-resources", worldGameTest.output.resourcesDir!!.absolutePath,
+                "--geology-resources", geologyGameTest.output.resourcesDir!!.absolutePath)
+        }
+    }
+}
+val verifyWorldFixtureArchives = tasks.register("verifyWorldFixtureArchives") {
+    dependsOn(tasks.named("reobfJar"), tasks.named("sourcesJar"))
+    doLast {
+        project.exec {
+            commandLine("python3", "-B", "gradle/verify-world-fixture.py",
+                "--runtime-archive", layout.buildDirectory.file("reobfJar/output.jar").get().asFile.absolutePath,
+                "--sources-archive", tasks.named<Jar>("sourcesJar").get().archiveFile.get().asFile.absolutePath)
+        }
+    }
+}
 
 val stageRuntimeJar by tasks.registering(Copy::class) {
     group = "build"
@@ -210,17 +373,20 @@ tasks.test { useJUnitPlatform() }
 
 fun retainedFixture(name: String, directory: File) = tasks.register(name) {
     doLast {
-        require(!directory.exists() || directory.listFiles().isNullOrEmpty()) {
+        require(!directory.exists()) {
             "Native fixture already exists at $directory; choose a fresh -Pbc.nativeFixtureId (nothing was deleted)"
         }
-        directory.mkdirs()
-        // Vanilla logs ERROR for a missing properties file even in a fresh GameTest run.
-        // An empty file uses native defaults without accepting that startup failure.
-        directory.resolve("server.properties").writeText("# Retained native GameTest fixture; vanilla defaults.\n")
+        Files.createDirectories(directory.parentFile.toPath())
+        Files.createDirectory(directory.toPath())
+        // Exact absent-only defaults: never overwrite/adopt operator or previously prepared settings.
+        Files.writeString(directory.resolve("server.properties").toPath(),
+            "# Retained native GameTest fixture; vanilla defaults.\n",
+            StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
     }
 }
 val prepareGameTestRun = retainedFixture("prepareRetainedGameTestRun", gameTestRun)
 val prepareWorldTestRun = retainedFixture("prepareRetainedWorldTestRun", worldTestRun)
+prepareWorldTestRun.configure { dependsOn(verifyWorldProfilePins) }
 val prepareGeologyTestRun = retainedFixture("prepareRetainedGeologyTestRun", geologyTestRun)
 val syncGameTestStructures = tasks.register<Copy>("syncGameTestStructures") {
     dependsOn(prepareGameTestRun)
@@ -292,13 +458,28 @@ tasks.matching { it.name.startsWith("prepareRunGeologyGameTestServer") }.configu
     dependsOn(prepareGeologicalInputs, syncGeologicalStructures)
 }
 
+tasks.matching { it.name == "runGameTestServer" }.configureEach {
+    doLast {
+        val latest = gameTestRun.resolve("logs/latest.log")
+        require(latest.isFile) { "Missing actual native parser profile log" }
+        val counts = Regex("""All (\d+) required tests passed""").findAll(latest.readText()).map { it.groupValues[1].toInt() }.toList()
+        require(counts == listOf(12)) { "Native parser profile must actually complete all original 10 plus two cases: $counts" }
+        listOf("latest.log", "debug.log").forEach { name ->
+            val log = gameTestRun.resolve("logs/$name")
+            require(log.isFile) { "Missing actual native parser diagnostics: $log" }
+            require(!Regex("""\[[^\]\r\n]*/(?:ERROR|FATAL)\]|(?i:could not decode|couldn't decode|Tried to load a block entity for block .* but failed at location |Tried to load a DUMMY block entity @ .* but found not block entity block )""").containsMatchIn(log.readText())) { "Native parser diagnostics require diagnosis: $log" }
+        }
+    }
+}
+
 tasks.register("headlessGameTest") {
     group = "verification"
     dependsOn(tasks.named("runGameTestServer"))
 }
 tasks.register("verifyFast") {
     group = "verification"
-    dependsOn(tasks.named("check"))
+    dependsOn(tasks.named("check"), rootContractTest, verifyNativeParserProfile, verifyNativeParserArchive,
+        verifyWorldFixtureProfile, verifyWorldFixtureArchives)
 }
 tasks.register("verifyFull") {
     group = "verification"
@@ -309,9 +490,33 @@ tasks.register("verifyWorld") {
     description = "Runs retained full-cadence and pinned geological/native-population qualification fixtures."
     dependsOn(tasks.named("verifyFull"), tasks.named("runWorldGameTestServer"), tasks.named("runGeologyGameTestServer"))
 }
+fun requireWorldProfileCompletion(directory: File) {
+    val latest = directory.resolve("logs/latest.log")
+    require(latest.isFile) { "Missing actual world fixture log" }
+    val counts = Regex("""All (\d+) required tests passed""").findAll(latest.readText()).map { it.groupValues[1].toInt() }.toList()
+    require(counts == listOf(1)) { "Selected original world profile must complete exactly its one original case: $counts" }
+    listOf("latest.log", "debug.log").forEach { name ->
+        val log = directory.resolve("logs/$name")
+        require(log.isFile) { "Missing actual world diagnostics: $log" }
+        require(!Regex("""\[[^\]\r\n]*/(?:ERROR|FATAL)\]|(?i:could not decode|couldn't decode|Tried to load a block entity for block .* but failed at location |Tried to load a DUMMY block entity @ .* but found not block entity block )""").containsMatchIn(log.readText())) { "World diagnostics require diagnosis: $log" }
+    }
+}
 tasks.matching { it.name == "runWorldGameTestServer" }.configureEach {
+    doLast { requireWorldProfileCompletion(worldTestRun) }
     mustRunAfter(tasks.named("verifyFull"))
 }
 tasks.matching { it.name == "runGeologyGameTestServer" }.configureEach {
+    doLast { requireWorldProfileCompletion(geologyTestRun) }
     mustRunAfter(tasks.named("verifyFull"), tasks.named("runWorldGameTestServer"))
 }
+
+// Nonshipping policy preparation/proof has no production RunConfig or archive surface.
+extra["caveFixtureGlmToken"] = nativeFixtureId
+extra["caveFixtureGlmPackRoot"] = geologicalPackRoot
+extra["caveFixtureGlmWorldRun"] = worldTestRun
+extra["caveFixtureGlmGeologyRun"] = geologyTestRun
+extra["caveFixtureGlmProviders"] = mapOf(
+    "better-compat-fixes" to betterContentJar("better-compat-fixes", "better-compat-fixes-0.1.9.jar"),
+    "better-deaths-door" to betterContentJar("better-deaths-door", "better-deaths-door-1.0.0.jar"),
+    "better-gameplay-notices" to betterContentJar("better-gameplay-notices", "better-gameplay-notices-1.0.0.jar"))
+apply(from = "gradle/fixture-glm.gradle")

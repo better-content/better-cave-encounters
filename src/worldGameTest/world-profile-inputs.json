@@ -1,0 +1,21 @@
+{
+  "schema": "bc.cave.world-profile-inputs.v1",
+  "catalogue_ids": [
+    "better_cave_encounters:carrion",
+    "better_cave_encounters:deep_void",
+    "better_cave_encounters:end",
+    "better_cave_encounters:sculk",
+    "better_cave_encounters:spirits",
+    "better_cave_encounters:undead"
+  ],
+  "depths": [-56, 0, 32],
+  "required_cohorts": 18,
+  "deep_void": {
+    "pin": "mods/the-deep-void.pw.toml",
+    "coordinate": "curse.maven:the-deep-void-982999:8507128",
+    "mod_id": "the_deep_void",
+    "mod_version": "1.98.1",
+    "mandatory_dependencies": ["minecraft"],
+    "optional_dependencies_not_added": ["geckolib", "jei"]
+  }
+}

@@ -1,0 +1,587 @@
+{
+  "schema": "bc.cave.fixture_glm_scope.v1",
+  "description": "Authored exact owning profile authority and reviewed original registration bytecode; not a runtime observation or gameplay-effect verdict.",
+  "profiles": {
+    "legacy": {
+      "originals": [
+        {
+          "coordinate": "com.teamresourceful.resourcefulconfig:resourcefulconfig-forge-1.20.1:2.1.3",
+          "sha256": "c404b9e5cf8595427a72d4ca6ee5730289168762b463f169be3ae5dfe3727ded",
+          "root_pin": null
+        },
+        {
+          "coordinate": "com.teamresourceful.resourcefullib:resourcefullib-forge-1.20.1:2.1.29",
+          "sha256": "b13afb95231d88e1caea5a045967e0fc291b29020b0d26ad39e6f9e9a551fee8",
+          "root_pin": null
+        },
+        {
+          "coordinate": "curse.maven:born-in-chaos-686437:7917933",
+          "sha256": "9f242f4f3330f3d0d985f5f3ce9a92fe09016ff9c6162252f201d17009b28d7d",
+          "root_pin": "mods/born-in-chaos.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:curios-api-309927:6418456",
+          "sha256": "1e817919a35b37cf30524aaec73f0ca5130452f23f168f844854df282eb8e51f",
+          "root_pin": null
+        },
+        {
+          "coordinate": "curse.maven:geckolib-388172:7553267",
+          "sha256": "8b90e11871a58b63816e99c529e6c932bc88e6beb3fec97ad618e22217df3250",
+          "root_pin": "mods/geckolib.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:goety-586095:8087429",
+          "sha256": "2d1a9c2621980af2425ebbb1fde62b6a12ce90f4733120d953a2af2b5cbf28a9",
+          "root_pin": "mods/goety.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:mantle-74924:7563777",
+          "sha256": "6052e47c3981064bd5213728eaa3c5418289f6f85b07a1cd4dd1505239248838",
+          "root_pin": "mods/mantle.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:quark-243121:6427817",
+          "sha256": "c90b96f049d92825c4a103721988c80d72e5ad380d17be46a0f53e114874c478",
+          "root_pin": "mods/quark.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:the-deep-void-982999:8507128",
+          "sha256": "018c80220b13abba85ddeba05a7d4850e2b989d9a14d6f008d65e2e94000f375",
+          "root_pin": "mods/the-deep-void.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:tinkers-construct-74072:7449219",
+          "sha256": "653b49d73481a1325ba78adc7273dee6c765a51bafdf264a7510576d6ef91c43",
+          "root_pin": "mods/tinkers-construct.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:zeta-968868:7335229",
+          "sha256": "cd1786902a79434f8fd762d741019d9c8a79725fef7e30a89c153c934e1e6a9e",
+          "root_pin": "mods/zeta.pw.toml"
+        },
+        {
+          "coordinate": "worldtest.enderman:endermanoverhaul-forge-1.20.1-1.0.4:yjxych8u@jar",
+          "sha256": "18f9f0bf3a9b4f77ad6913c28ccb927cde24f5d19524152cfe79ebb3dcccacc5",
+          "root_pin": "mods/enderman-overhaul.pw.toml"
+        }
+      ],
+      "ordered_ids": [
+        "goety:cross_pottery_sherd_dig",
+        "goety:dead_pottery_sherd_dig",
+        "goety:forbidden_piece_dig",
+        "goety:haunt_pottery_sherd_dig",
+        "goety:instant_pick",
+        "goety:night_pottery_sherd_dig",
+        "goety:occult_fabric_dig",
+        "goety:soul_pottery_sherd_dig",
+        "goety:spirit_fabric_dig",
+        "tconstruct:chrysophilite_modifier",
+        "tconstruct:lustrous/aluminum",
+        "tconstruct:lustrous/cadmium",
+        "tconstruct:lustrous/chromium",
+        "tconstruct:lustrous/cobalt",
+        "tconstruct:lustrous/copper",
+        "tconstruct:lustrous/gold",
+        "tconstruct:lustrous/iron",
+        "tconstruct:lustrous/lead",
+        "tconstruct:lustrous/netherite_scrap",
+        "tconstruct:lustrous/nickel",
+        "tconstruct:lustrous/osmium",
+        "tconstruct:lustrous/platinum",
+        "tconstruct:lustrous/silver",
+        "tconstruct:lustrous/tin",
+        "tconstruct:lustrous/tungsten",
+        "tconstruct:lustrous/uranium",
+        "tconstruct:lustrous/zinc",
+        "tconstruct:modifier_hook",
+        "tconstruct:wither_bone"
+      ],
+      "explicit_exclusions": [
+        "goety:chill_fabric_dig",
+        "goety:dark_fabric_dig",
+        "goety:gale_fabric_dig",
+        "goety:jade_dig"
+      ],
+      "typed_ids": [
+        "condition|forge:loot_table_id",
+        "condition|mantle:block_tag",
+        "condition|mantle:tag_filled",
+        "condition|minecraft:match_tool",
+        "condition|tconstruct:block_or_entity",
+        "condition|tconstruct:config",
+        "condition|tconstruct:has_chrysophilite",
+        "condition|tconstruct:has_modifier",
+        "function|minecraft:explosion_decay",
+        "function|minecraft:set_count",
+        "function|tconstruct:chrysophilite_bonus",
+        "function|tconstruct:modifier_bonus",
+        "type|goety:add_loot",
+        "type|goety:instant_pick",
+        "type|mantle:add_entry",
+        "type|mantle:contains_item",
+        "type|mantle:inverted",
+        "type|mantle:replace_item",
+        "type|mantle:tag_preference",
+        "type|minecraft:item",
+        "type|minecraft:uniform",
+        "type|tconstruct:modifier_hook"
+      ]
+    },
+    "geology": {
+      "originals": [
+        {
+          "coordinate": "curse.maven:alexs-caves-924854:5848216",
+          "sha256": "131e205ce3eed384d701b336d8a0d4a671108ed56b6eff6014f0e407db2997f0",
+          "root_pin": "mods/alexs-caves.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:architectury-api-419699:5137938",
+          "sha256": "218b471d0b8a1f6cda14cfc1beb9eeb0df54304500acc6c5613d9b88ec65d9af",
+          "root_pin": "mods/architectury-api.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:born-in-chaos-686437:7917933",
+          "sha256": "9f242f4f3330f3d0d985f5f3ce9a92fe09016ff9c6162252f201d17009b28d7d",
+          "root_pin": "mods/born-in-chaos.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:cataclysm-551586:8246047",
+          "sha256": "c29dcf940168208517b72f2d9965828b106a6b94cbea55d5001558c69a27b362",
+          "root_pin": "mods/cataclysm.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:citadel-331936:7476570",
+          "sha256": "56c7ab87348a5292583aac787b6cf11b5193e77f02af1d17ea75a96f8640b3ce",
+          "root_pin": "mods/citadel.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:curios-309927:6418456",
+          "sha256": "1e817919a35b37cf30524aaec73f0ca5130452f23f168f844854df282eb8e51f",
+          "root_pin": "mods/curios.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:geckolib-388172:7553267",
+          "sha256": "8b90e11871a58b63816e99c529e6c932bc88e6beb3fec97ad618e22217df3250",
+          "root_pin": "mods/geckolib.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:global-gamerules-227657:7172469",
+          "sha256": "99910454017ffaef542b2b655b8f82c978fa055133d450e3322f532f54e5533e",
+          "root_pin": "mods/global-gamerules.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:goety-586095:8087429",
+          "sha256": "2d1a9c2621980af2425ebbb1fde62b6a12ce90f4733120d953a2af2b5cbf28a9",
+          "root_pin": "mods/goety.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:hyle-609850:7736352",
+          "sha256": "63e6943093a75b4f5202f33027acb727b044306853cdcd17379f6f10704b2a16",
+          "root_pin": "mods/hyle.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:ice-and-fire-dragons-264231:5633453",
+          "sha256": "2b80245fc9b7d6fdc61d71f9892f4c6114eb7f303f65634845aaab25f84d1e82",
+          "root_pin": "mods/ice-and-fire-dragons.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:in-control-257356:7436213",
+          "sha256": "85d64d0f81f6eb6e1e2fa2a97a0aeabcea9e371498c3853b12c3697891e57f2c",
+          "root_pin": "mods/in-control.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:kubejs-238086:5853326",
+          "sha256": "3de6b7267d3aab981848ed54d3afe7edf20532fa4060631fd6fffcd99ac5f3d5",
+          "root_pin": "mods/kubejs.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:lionfishapi-1001614:8095554",
+          "sha256": "d2fdaf7e9bc53fde7da4a86ab17018a3ed6c16fc2d46de5054e5a83e2bef7871",
+          "root_pin": "mods/lionfishapi.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:lootjs-570630:7551186",
+          "sha256": "c1672330605a691b8a91b3a4d252f2d3a280f252874f1fc5fdd7cad07d13b719",
+          "root_pin": "mods/lootjs.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:mantle-74924:7563777",
+          "sha256": "6052e47c3981064bd5213728eaa3c5418289f6f85b07a1cd4dd1505239248838",
+          "root_pin": "mods/mantle.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:quark-243121:6427817",
+          "sha256": "c90b96f049d92825c4a103721988c80d72e5ad380d17be46a0f53e114874c478",
+          "root_pin": "mods/quark.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:resourceful-config-714059:6231176",
+          "sha256": "c404b9e5cf8595427a72d4ca6ee5730289168762b463f169be3ae5dfe3727ded",
+          "root_pin": "mods/resourceful-config.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:resourceful-lib-570073:5659871",
+          "sha256": "b13afb95231d88e1caea5a045967e0fc291b29020b0d26ad39e6f9e9a551fee8",
+          "root_pin": "mods/resourceful-lib.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:rhino-416294:6186971",
+          "sha256": "fed2211429301bf043864183cab9ab8e92d4cc4dbb9e488ce6c75217c54584a6",
+          "root_pin": "mods/rhino.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:the-twilight-forest-227639:5468648",
+          "sha256": "0bdc89263616d1b35c32ef82c5e9c14cbd20368e2fe8b468c72a28320be7a778",
+          "root_pin": "mods/the-twilight-forest.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:tinkers-construct-74072:7449219",
+          "sha256": "653b49d73481a1325ba78adc7273dee6c765a51bafdf264a7510576d6ef91c43",
+          "root_pin": "mods/tinkers-construct.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:unearthed-406825:7742307",
+          "sha256": "20aa3ca8934454490157dfe4a689a5946d9d08b45fee5c833cbe9b8ec2f64f3c",
+          "root_pin": "mods/unearthed.pw.toml"
+        },
+        {
+          "coordinate": "curse.maven:zeta-968868:7335229",
+          "sha256": "cd1786902a79434f8fd762d741019d9c8a79725fef7e30a89c153c934e1e6a9e",
+          "root_pin": "mods/zeta.pw.toml"
+        },
+        {
+          "coordinate": "worldtest.enderman:endermanoverhaul-forge-1.20.1-1.0.4:yjxych8u@jar",
+          "sha256": "18f9f0bf3a9b4f77ad6913c28ccb927cde24f5d19524152cfe79ebb3dcccacc5",
+          "root_pin": "mods/enderman-overhaul.pw.toml"
+        }
+      ],
+      "ordered_ids": [
+        "alexscaves:cabin_map",
+        "alexscaves:cave_tablet_abyssal_chasm",
+        "alexscaves:cave_tablet_candy_cavity",
+        "alexscaves:cave_tablet_forlorn_hollows",
+        "alexscaves:cave_tablet_magnetic_caves",
+        "alexscaves:cave_tablet_primordial_caves",
+        "alexscaves:cave_tablet_toxic_caves",
+        "goety:cross_pottery_sherd_dig",
+        "goety:dead_pottery_sherd_dig",
+        "goety:forbidden_piece_dig",
+        "goety:haunt_pottery_sherd_dig",
+        "goety:instant_pick",
+        "goety:night_pottery_sherd_dig",
+        "goety:occult_fabric_dig",
+        "goety:soul_pottery_sherd_dig",
+        "goety:spirit_fabric_dig",
+        "tconstruct:chrysophilite_modifier",
+        "tconstruct:lustrous/aluminum",
+        "tconstruct:lustrous/cadmium",
+        "tconstruct:lustrous/chromium",
+        "tconstruct:lustrous/cobalt",
+        "tconstruct:lustrous/copper",
+        "tconstruct:lustrous/gold",
+        "tconstruct:lustrous/iron",
+        "tconstruct:lustrous/lead",
+        "tconstruct:lustrous/netherite_scrap",
+        "tconstruct:lustrous/nickel",
+        "tconstruct:lustrous/osmium",
+        "tconstruct:lustrous/platinum",
+        "tconstruct:lustrous/silver",
+        "tconstruct:lustrous/tin",
+        "tconstruct:lustrous/tungsten",
+        "tconstruct:lustrous/uranium",
+        "tconstruct:lustrous/zinc",
+        "tconstruct:modifier_hook",
+        "tconstruct:wither_bone",
+        "twilightforest:fiery_pick_smelting",
+        "twilightforest:giant_pick_grouping"
+      ],
+      "explicit_exclusions": [
+        "goety:chill_fabric_dig",
+        "goety:dark_fabric_dig",
+        "goety:gale_fabric_dig",
+        "goety:jade_dig"
+      ],
+      "typed_ids": [
+        "condition|forge:loot_table_id",
+        "condition|mantle:block_tag",
+        "condition|mantle:tag_filled",
+        "condition|minecraft:match_tool",
+        "condition|tconstruct:block_or_entity",
+        "condition|tconstruct:config",
+        "condition|tconstruct:has_chrysophilite",
+        "condition|tconstruct:has_modifier",
+        "condition|twilightforest:giant_pick_used",
+        "function|minecraft:explosion_decay",
+        "function|minecraft:set_count",
+        "function|tconstruct:chrysophilite_bonus",
+        "function|tconstruct:modifier_bonus",
+        "type|alexscaves:cabin_map",
+        "type|alexscaves:cave_tablet",
+        "type|goety:add_loot",
+        "type|goety:instant_pick",
+        "type|mantle:add_entry",
+        "type|mantle:contains_item",
+        "type|mantle:inverted",
+        "type|mantle:replace_item",
+        "type|mantle:tag_preference",
+        "type|minecraft:item",
+        "type|minecraft:uniform",
+        "type|tconstruct:modifier_hook",
+        "type|twilightforest:fiery_pick_smelting",
+        "type|twilightforest:giant_block_grouping"
+      ]
+    }
+  },
+  "outer_codecs": {
+    "goety:add_loot": {
+      "registration_class": "com.Polarice3.Goety.init.ModLootModifier",
+      "codec_class": "com.Polarice3.Goety.common.loot.AddItemLootModifier",
+      "bus_class": "com.Polarice3.Goety.Goety"
+    },
+    "goety:instant_pick": {
+      "registration_class": "com.Polarice3.Goety.init.ModLootModifier",
+      "codec_class": "com.Polarice3.Goety.init.ModLootModifier$InstantPickModifier",
+      "bus_class": "com.Polarice3.Goety.Goety"
+    },
+    "mantle:add_entry": {
+      "registration_class": "slimeknights.mantle.loot.MantleLoot",
+      "codec_class": "slimeknights.mantle.loot.AddEntryLootModifier",
+      "bus_class": "slimeknights.mantle.Mantle"
+    },
+    "mantle:replace_item": {
+      "registration_class": "slimeknights.mantle.loot.MantleLoot",
+      "codec_class": "slimeknights.mantle.loot.ReplaceItemLootModifier",
+      "bus_class": "slimeknights.mantle.Mantle"
+    },
+    "tconstruct:modifier_hook": {
+      "registration_class": "slimeknights.tconstruct.tools.TinkerModifiers",
+      "codec_class": "slimeknights.tconstruct.tools.modifiers.ModifierLootModifier",
+      "bus_class": "slimeknights.tconstruct.TConstruct"
+    },
+    "alexscaves:cabin_map": {
+      "registration_class": "com.github.alexmodguy.alexscaves.server.misc.ACLootTableRegistry",
+      "codec_class": "com.github.alexmodguy.alexscaves.server.misc.CabinMapLootModifier",
+      "bus_class": "com.github.alexmodguy.alexscaves.AlexsCaves"
+    },
+    "alexscaves:cave_tablet": {
+      "registration_class": "com.github.alexmodguy.alexscaves.server.misc.ACLootTableRegistry",
+      "codec_class": "com.github.alexmodguy.alexscaves.server.misc.CaveTabletLootModifier",
+      "bus_class": "com.github.alexmodguy.alexscaves.AlexsCaves"
+    },
+    "twilightforest:fiery_pick_smelting": {
+      "registration_class": "twilightforest.init.TFLootModifiers",
+      "codec_class": "twilightforest.loot.modifiers.FieryToolSmeltingModifier",
+      "bus_class": "twilightforest.TwilightForestMod"
+    },
+    "twilightforest:giant_block_grouping": {
+      "registration_class": "twilightforest.init.TFLootModifiers",
+      "codec_class": "twilightforest.loot.modifiers.GiantToolGroupingModifier",
+      "bus_class": "twilightforest.TwilightForestMod"
+    }
+  },
+  "typed_registration_owners": {
+    "condition|forge:loot_table_id": {
+      "registration_witness_class": "net.minecraftforge.common.ForgeMod"
+    },
+    "condition|mantle:block_tag": {
+      "registration_witness_class": "slimeknights.mantle.loot.MantleLoot"
+    },
+    "condition|mantle:tag_filled": {
+      "registration_witness_class": "slimeknights.mantle.loot.MantleLoot"
+    },
+    "condition|minecraft:match_tool": {
+      "registration_witness_class": "net.minecraft.world.level.storage.loot.predicates.LootItemConditions"
+    },
+    "condition|tconstruct:block_or_entity": {
+      "registration_witness_class": "slimeknights.tconstruct.shared.TinkerCommons"
+    },
+    "condition|tconstruct:config": {
+      "registration_witness_class": "slimeknights.tconstruct.common.TinkerModule"
+    },
+    "condition|tconstruct:has_chrysophilite": {
+      "registration_witness_class": "slimeknights.tconstruct.tools.TinkerModifiers"
+    },
+    "condition|tconstruct:has_modifier": {
+      "registration_witness_class": "slimeknights.tconstruct.tools.TinkerModifiers"
+    },
+    "condition|twilightforest:giant_pick_used": {
+      "registration_witness_class": "twilightforest.init.TFLoot"
+    },
+    "function|minecraft:explosion_decay": {
+      "registration_witness_class": "net.minecraft.world.level.storage.loot.functions.LootItemFunctions"
+    },
+    "function|minecraft:set_count": {
+      "registration_witness_class": "net.minecraft.world.level.storage.loot.functions.LootItemFunctions"
+    },
+    "function|tconstruct:chrysophilite_bonus": {
+      "registration_witness_class": "slimeknights.tconstruct.tools.TinkerModifiers"
+    },
+    "function|tconstruct:modifier_bonus": {
+      "registration_witness_class": "slimeknights.tconstruct.tools.TinkerModifiers"
+    },
+    "type|alexscaves:cabin_map": {
+      "registration_witness_class": "com.github.alexmodguy.alexscaves.server.misc.ACLootTableRegistry"
+    },
+    "type|alexscaves:cave_tablet": {
+      "registration_witness_class": "com.github.alexmodguy.alexscaves.server.misc.ACLootTableRegistry"
+    },
+    "type|goety:add_loot": {
+      "registration_witness_class": "com.Polarice3.Goety.init.ModLootModifier"
+    },
+    "type|goety:instant_pick": {
+      "registration_witness_class": "com.Polarice3.Goety.init.ModLootModifier"
+    },
+    "type|mantle:add_entry": {
+      "registration_witness_class": "slimeknights.mantle.loot.MantleLoot"
+    },
+    "type|mantle:contains_item": {
+      "registration_witness_class": "slimeknights.mantle.loot.MantleLoot"
+    },
+    "type|mantle:inverted": {
+      "registration_witness_class": "slimeknights.mantle.loot.MantleLoot"
+    },
+    "type|mantle:replace_item": {
+      "registration_witness_class": "slimeknights.mantle.loot.MantleLoot"
+    },
+    "type|mantle:tag_preference": {
+      "registration_witness_class": "slimeknights.mantle.loot.MantleLoot"
+    },
+    "type|minecraft:item": {
+      "registration_witness_class": "net.minecraft.world.level.storage.loot.entries.LootPoolEntries"
+    },
+    "type|minecraft:uniform": {
+      "registration_witness_class": "net.minecraft.world.level.storage.loot.providers.number.NumberProviders"
+    },
+    "type|tconstruct:modifier_hook": {
+      "registration_witness_class": "slimeknights.tconstruct.tools.TinkerModifiers"
+    },
+    "type|twilightforest:fiery_pick_smelting": {
+      "registration_witness_class": "twilightforest.init.TFLootModifiers"
+    },
+    "type|twilightforest:giant_block_grouping": {
+      "registration_witness_class": "twilightforest.init.TFLootModifiers"
+    }
+  },
+  "original_class_witnesses": {
+    "com.Polarice3.Goety.init.ModLootModifier": {
+      "coordinate": "curse.maven:goety-586095:8087429",
+      "sha256": "cd83b165b05d92d9e8273511e90541da8878a8be7cc45f46dcee555cde32f549"
+    },
+    "com.Polarice3.Goety.common.loot.AddItemLootModifier": {
+      "coordinate": "curse.maven:goety-586095:8087429",
+      "sha256": "8b7407f70e863b17e705536a9fde3180aa3eb9b74a23251f10fff0e61c803208"
+    },
+    "com.Polarice3.Goety.Goety": {
+      "coordinate": "curse.maven:goety-586095:8087429",
+      "sha256": "e32705644eb213b67a325809df29e478f573b77554ffcce8fac396e8651c38b9"
+    },
+    "com.Polarice3.Goety.init.ModLootModifier$InstantPickModifier": {
+      "coordinate": "curse.maven:goety-586095:8087429",
+      "sha256": "880e40ec107eaadebfcaa73f9b5cafb57a6f5731ec93503fbabf49ca50e3988f"
+    },
+    "slimeknights.mantle.loot.MantleLoot": {
+      "coordinate": "curse.maven:mantle-74924:7563777",
+      "sha256": "54b553849ac27b1184404c2f5168ea0a6aa773d92eaa4ddfc6953c70fdbc9a84"
+    },
+    "slimeknights.mantle.loot.AddEntryLootModifier": {
+      "coordinate": "curse.maven:mantle-74924:7563777",
+      "sha256": "46443335d6690c8ce9ca0a7c60360ab8c369ab229d907c27b1fa3e51754ab7e6"
+    },
+    "slimeknights.mantle.Mantle": {
+      "coordinate": "curse.maven:mantle-74924:7563777",
+      "sha256": "59e1d0bee1b47d0dcf63094fd2a82c8c7231ed6077228adabf6ae85428fafb3f"
+    },
+    "slimeknights.mantle.loot.ReplaceItemLootModifier": {
+      "coordinate": "curse.maven:mantle-74924:7563777",
+      "sha256": "f2cc9e3e116a28fd9ed8795d4ad6993e9c1fd27249e096c86115b4f0655f7183"
+    },
+    "slimeknights.tconstruct.tools.TinkerModifiers": {
+      "coordinate": "curse.maven:tinkers-construct-74072:7449219",
+      "sha256": "733e3a56afc6bb32a42097d99cdb6734a52e8bd8d684e4cfb66eddd33e98e281"
+    },
+    "slimeknights.tconstruct.tools.modifiers.ModifierLootModifier": {
+      "coordinate": "curse.maven:tinkers-construct-74072:7449219",
+      "sha256": "e7f92e6afb3355acbb20cb9e416f046ba9f9f47d09cfcf2d8ad9fd8422f494bb"
+    },
+    "slimeknights.tconstruct.TConstruct": {
+      "coordinate": "curse.maven:tinkers-construct-74072:7449219",
+      "sha256": "8f708c9e25e0c0dc4d12c02e1629c0637e54cff6f34cb8f18713ba12398c611f"
+    },
+    "com.github.alexmodguy.alexscaves.server.misc.ACLootTableRegistry": {
+      "coordinate": "curse.maven:alexs-caves-924854:5848216",
+      "sha256": "f70ff315fc5f25f49d928b6d5a61d4a78e88598b9ff01fe92535246cf7df5093"
+    },
+    "com.github.alexmodguy.alexscaves.server.misc.CabinMapLootModifier": {
+      "coordinate": "curse.maven:alexs-caves-924854:5848216",
+      "sha256": "842f6b71b164b7d27dce3b13d1ef9eddf35302798595bd439d5f3198ef2dae3d"
+    },
+    "com.github.alexmodguy.alexscaves.AlexsCaves": {
+      "coordinate": "curse.maven:alexs-caves-924854:5848216",
+      "sha256": "255a700e3587c1480d643fd79bcb591e8100383e5f9e1f7955423f5e6af4dc9e"
+    },
+    "com.github.alexmodguy.alexscaves.server.misc.CaveTabletLootModifier": {
+      "coordinate": "curse.maven:alexs-caves-924854:5848216",
+      "sha256": "a96bda054470a978048bc098710bd06cb9cb2ea5ba4848618c5dbaede7377269"
+    },
+    "twilightforest.init.TFLootModifiers": {
+      "coordinate": "curse.maven:the-twilight-forest-227639:5468648",
+      "sha256": "8cb56fbf51c6fe505acba8ed401d98e9d3b3b9892023c5ef3b6a694625a0b5e5"
+    },
+    "twilightforest.loot.modifiers.FieryToolSmeltingModifier": {
+      "coordinate": "curse.maven:the-twilight-forest-227639:5468648",
+      "sha256": "62e370eebdb76065ef43b5bbe2083c7526f327ccd150daea80bf901c71b20d3b"
+    },
+    "twilightforest.TwilightForestMod": {
+      "coordinate": "curse.maven:the-twilight-forest-227639:5468648",
+      "sha256": "7d2edb4127c1e301686cc8d6c919cac5620a2f30cdce80393ea3782359036c52"
+    },
+    "twilightforest.loot.modifiers.GiantToolGroupingModifier": {
+      "coordinate": "curse.maven:the-twilight-forest-227639:5468648",
+      "sha256": "a766ea6485ceb3231a9f96eca7f771364e6961bcbb748ebabf1412a12da4d9c0"
+    },
+    "slimeknights.mantle.registration.adapter.RegistryAdapter": {
+      "coordinate": "curse.maven:mantle-74924:7563777",
+      "sha256": "0685477a6f32ee3dad5303992575d2f1fc4960ba1620ef65c33d810c26922f10"
+    },
+    "slimeknights.mantle.registration.deferred.SynchronizedDeferredRegister": {
+      "coordinate": "curse.maven:mantle-74924:7563777",
+      "sha256": "82f843c56ff521d3454e5bb47f10e4b7cdab9ce63598391adbfb4ff3e2e1c8dc"
+    },
+    "slimeknights.tconstruct.common.TinkerModule": {
+      "coordinate": "curse.maven:tinkers-construct-74072:7449219",
+      "sha256": "9a9b2e8a8f37cef9f68e8fb82e267dfe56bcbec974f0ee685519ebf04eb74f17"
+    },
+    "slimeknights.tconstruct.shared.TinkerCommons": {
+      "coordinate": "curse.maven:tinkers-construct-74072:7449219",
+      "sha256": "dafd42dac141c7bab06348301e453d06e5f9b2490a494bec7fbe80e62805453e"
+    },
+    "twilightforest.init.TFLoot": {
+      "coordinate": "curse.maven:the-twilight-forest-227639:5468648",
+      "sha256": "1e4af2aea986a1d118c47af7b04ae9f922f8b90eb3e6ab01da43ea19e19e814a"
+    },
+    "net.minecraftforge.common.ForgeMod": {
+      "coordinate": "mappedForgeSdk",
+      "sha256": "9bc38eef8f407c661b5b6aa77c64d76cbcbc2fa3d84716b76676159f30c94034"
+    },
+    "net.minecraftforge.common.loot.LootModifierManager": {
+      "coordinate": "mappedForgeSdk",
+      "sha256": "189fc5d8f28c881a070b56df6d0ce8dffd164010d40838b42f173407bd345a84"
+    },
+    "net.minecraft.world.level.storage.loot.predicates.LootItemConditions": {
+      "coordinate": "mappedForgeSdk",
+      "sha256": "8d300839be40e1aac73839d136b5ed023d71accede2aaef8f77a5eae00625b30"
+    },
+    "net.minecraft.world.level.storage.loot.functions.LootItemFunctions": {
+      "coordinate": "mappedForgeSdk",
+      "sha256": "71c15603bb9ae0b38fd9ec72295da55d29dd4b609f9b706e1e7daeaa50ee4004"
+    },
+    "net.minecraft.world.level.storage.loot.entries.LootPoolEntries": {
+      "coordinate": "mappedForgeSdk",
+      "sha256": "c30c3c7a7b3856f8793cc9ea86f6908bdcb26bc1f65f00ac3c6c84bf1caf9eb4"
+    },
+    "net.minecraft.world.level.storage.loot.providers.number.NumberProviders": {
+      "coordinate": "mappedForgeSdk",
+      "sha256": "6f492ddd4ba51de7d3e35126f57b4fbfe46c47512f492fcbcc411108d0dccb88"
+    }
+  }
+}

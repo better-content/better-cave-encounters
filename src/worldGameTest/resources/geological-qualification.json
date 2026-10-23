@@ -106,6 +106,8 @@
     "kubejs/data/better_cave_encounters/**",
     "kubejs/data/better_compat_fixes/tags/entity_types/legacy_underground_ambient_denied.json",
     "kubejs/server_scripts/policy/global_loot_progression.js",
+    "kubejs/data/forge/loot_modifiers/global_loot_modifiers.json",
+    "kubejs/server_scripts/progression/50_malum_soulstone_bootstrap.js",
     "kubejs/config/crafting_policy.json",
     "kubejs/config/quarantined_items.json",
     "config/better_cave_encounters-common.toml",

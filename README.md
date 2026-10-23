@@ -1,5 +1,49 @@
 # Better Cave Encounters
 
+## Playtest logging
+
+`bc.playtest.better_cave_encounters.director` observes encounter admission/retirement and
+warning/surge/recovery/suspend/resume edges, not repeated pursuit probes or individual ticks.
+Existing encounter/family UUIDs correlate phase, suspension, packet cancellation and retirement with
+admission and locality topology. Existing native tick is included where supplied; retirement does
+not invent one. Cached encounter callbacks do not resolve a world solely to fill dimension/position.
+It never invokes the diagnostic Mob-construction probe, adds RNG draws or logs player identities.
+DEBUG/TRACE share 120/minute (burst 20), 256 aggregation keys and 2,048-character records with
+30-second coalesced summaries. Startup INFO reports effective common-config enablement,
+loaded version/mode/limits; unavailable source identity is `UNKNOWN`. Stop/disconnect clears
+transient diagnostics without resetting gameplay or process allowances. Pure emitter/contracts
+supplement the existing native encounter and geological qualification gates.
+
+## Finite native initial-root replacement
+
+The optional exact-version Damned initial-root transaction and finite nonshipping paid catalogue
+seam are documented in [initial-root replacement](docs/initial-root-replacement.md). This grants no
+public budget authority or unbounded offspring policy. Source controls do not establish native
+acceptance. Native navigation is cache-bearing, not readonly. After true native insertion/return,
+the paid actual root receives existing Cave grounding and the unchanged final native path/Forge
+predicates. Provisional geometry adds no duplicate path or Cave-position callback. No native movement,
+yaw/RNG rewrite, scratch navigator, weaker predicate, extra retry, pacing or schema change is implied.
+
+## Native parser fixture boundary
+
+`verifyFull` now requires **12** owning-namespace cases: the original ten unchanged plus two
+registry-dependent parser cases in nonshipping `src/nativeGameTest`. The exact source profile is
+`src/nativeGameTest/resources/native-case-inventory.json`. `verifyFast` checks missing/extra/aliased
+cases, namespace negatives and fixture archive-leak negatives; the final reobfuscated JAR is checked
+for fixture absence. Actual latest/debug logs must be clean and all twelve cases must complete.
+The existing world/geological profiles and deadlines are unchanged. Their nonshipping outputs
+now attach to the same owning mod/module, with the historical world-only descriptor excluded
+from effective fixture resources, not deleted or overlaid. The logical profile labels and
+one-case-per-world-profile inventory remain distinct. World cases use event-only selected
+registration (no automatic holder annotation); both engines filter their unchanged explicit world
+template namespace, not a logical profile label. `verifyFast` checks actual runtime/sources
+archive exclusion and processed resources; actual world startup checks its named FML module and
+owning descriptor. See [world fixture isolation and API mappings](docs/world-fixture-isolation.md).
+JVM tests retain both
+pre-registry schema rejections and all four finite-slime/corpse assertions without any bootstrap.
+See [the exact assertion mapping](docs/native-parser-fixture.md). Source preparation is not proof
+of a passed native gate; failed plain-JVM bootstrap attempts remain retained separately.
+
 ## Scope and authority
 
 This repository owns its mod-specific behavior and authoring inputs. Read [local instructions](AGENTS.md)
@@ -116,19 +160,24 @@ loot and terrain logic are unchanged; hard caps can reject an excess child.
 
 ## Verification boundaries
 
-The source changes and new assertions are **uncompiled and unrun** until separately
-authorized under the shared testing policy. `verifyFast` remains Minecraft-free;
+The shared testing policy controls source/runtime authorization and evidence scope.
+`verifyFast` remains Minecraft-free;
 `verifyFull` includes the existing headless native tests. Prepare the newly built Compat
 provider before compiling this Director API consumer; no old provider JAR is silently
 replaced. `BC_CUSTOM_MOD_JAR_DIR` retains its existing explicit-provider contract.
 
-`./gradlew verifyWorld`, when ordered, runs the existing full-cadence legacy fixture and
-the new geological fixture. The original fixture still uses its declared five-profile
-synthetic catalogue, fifteen dummy players at Y -56/0/32 and a surface sentinel. The
+`./gradlew verifyWorld`, when ordered, runs the full-cadence catalogue fixture and
+the geological fixture. The catalogue fixture now requires the strict exact six current authored
+profiles (old five plus Deep Void), all eighteen concurrent player cohorts at Y -56/0/32 and a
+surface sentinel. No old cohort, pacing/recovery/witness/cleanup logic, TPS condition or original
+80,000-tick deadline is relaxed. Its Deep Void8507128 original archive is checked against the actual
+root `mods/the-deep-void.pw.toml` and its mandatory Minecraft1.20.1 metadata closure. The
+read-only source/profile contract is `src/worldGameTest/world-profile-inputs.json`. The
 geological fixture has a separate source set and twenty-five current-pack archive pins
 in `src/worldGameTest/resources/geological-qualification.json`, including native mob
-libraries, Unearthed/Hyle, KubeJS/LootJS and In Control. It does not inherit the legacy fixture's extra
-Deeper and Darker dependency. Original archives are checked against committed Packwiz
+libraries, Unearthed/Hyle, KubeJS/LootJS and In Control. The unused legacy-only Deeper and Darker dependency is removed rather than exempting its invalid
+dedicated-server renderer mixin. The unchanged Cataclysm loot-policy sentinel is present only in
+the geology profile, which actually binds Cataclysm. Original archives are checked against committed Packwiz
 hashes; `BC_PACK_ROOT` may supply the pack root explicitly. Declared pack configuration,
 rosters/tags and the actual global loot script/configuration are copied reproducibly.
 

@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "com.bettercontent.bettercaveencounters.mixin",
+  "plugin": "com.bettercontent.bettercaveencounters.mixin.CaveMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "better_cave_encounters.refmap.json",
+  "mixins": ["DamnedInitialRootMixin"],
+  "injectors": {"defaultRequire": 1}
+}

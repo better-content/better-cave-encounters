@@ -1,6 +1,7 @@
 package com.bettercontent.bettercaveencounters.worldtest;
 
 import com.bettercontent.bettercaveencounters.DepthDirectorMod;
+import com.bettercontent.bettercaveencounters.CatalogueRootAccess;
 import com.bettercontent.bettercaveencounters.DepthDirectorDiagnostics;
 import com.bettercontent.bettercaveencounters.DepthMath;
 import com.bettercontent.bettercaveencounters.DirectorSavedData;
@@ -27,7 +28,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -39,7 +39,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-@GameTestHolder("better_cave_encounters_world_tests")
 @PrefixGameTestTemplate(false)
 public final class DepthDirectorWorldGameTests {
     private static final String TEMPLATE = "director_cave";
@@ -96,12 +95,12 @@ public final class DepthDirectorWorldGameTests {
             List<EcologyDefinition> definitions = EcologyRegistry.INSTANCE.definitions().values().stream()
                     .sorted(Comparator.comparing(definition -> definition.id().toString()))
                     .toList();
-            helper.assertTrue(definitions.size() == 5,
-                    "the real reload listener must load exactly five authored ecologies, loaded="
+            helper.assertTrue(definitions.size() == 6,
+                    "the real reload listener must load exactly six authored ecologies, loaded="
                             + definitions.stream().map(EcologyDefinition::id).toList());
             helper.assertTrue(definitions.stream().map(EcologyDefinition::id).collect(java.util.stream.Collectors.toSet())
-                            .containsAll(List.of(id("undead"), id("carrion"), id("spirits"), id("end"), id("sculk"))),
-                    "the real catalogue must contain undead, carrion, spirits, end, and sculk");
+                            .equals(Set.of(id("undead"), id("carrion"), id("spirits"), id("end"), id("sculk"), id("deep_void"))),
+                    "the real catalogue must contain exactly undead, carrion, spirits, end, sculk, and deep_void");
             return new WorldProof(helper, definitions);
         }
 
@@ -146,8 +145,22 @@ public final class DepthDirectorWorldGameTests {
                             "real EVENT spawn failed for " + ecology.id() + " entry " + entry.entity()
                                     + "; " + ProductionAccess.diagnose(level, List.of(cataloguePlayer),
                                     entry.entity(), candidate));
-                    helper.assertTrue(entry.entity().equals(result.entity()),
-                            "single-entry ecology selected the wrong entity for " + entry.entity());
+                    helper.assertTrue(entry.entity().equals(result.selectedEntity()),
+                            "single-entry ecology selected the wrong authorizing entity for " + entry.entity());
+                    helper.assertTrue(result.mob() != null && !result.mob().isRemoved()
+                                    && level.getEntity(result.mob().getUUID()) == result.mob()
+                                    && result.entity().equals(ForgeRegistries.ENTITY_TYPES.getKey(result.mob().getType())),
+                            "resolved catalogue identity must name the actual live world Mob");
+                    helper.assertTrue(result.paidAndSameFamily() && result.paidRoot() != null,
+                            "catalogue admission must prepay the original root and preserve its lineage family");
+                    if (result.nativeReplacement()) {
+                        helper.assertTrue(entry.entity().equals(new ResourceLocation("the_deep_void", "damned"))
+                                        && Set.of("cross_eyes", "big_eye", "multiple_eyes", "four_eyes").stream()
+                                        .map(path -> new ResourceLocation("the_deep_void", path)).anyMatch(result.entity()::equals)
+                                        && !result.paidRoot().equals(result.mob().getUUID()),
+                                "only the genuine Damned initial transaction may resolve to one native variant");
+                    } else helper.assertTrue(entry.entity().equals(result.entity()) && result.paidRoot().equals(result.mob().getUUID()),
+                            "nonconverted catalogue identity must remain the original paid root");
                     helper.assertTrue(result.mob() != null && result.mob().getTarget() == cataloguePlayer,
                             "real spawn did not target the registered nearest player for " + entry.entity());
                     assertProvenance(result.mob(), "catalogue entry " + entry.entity());
@@ -196,9 +209,9 @@ public final class DepthDirectorWorldGameTests {
             surface = new SurfaceSentinel(surfaceCenter, surfacePlayer,
                     DirectorSavedData.get(level.getServer()).track(surfacePlayer.getUUID()));
             helper.assertTrue(level.getServer().getPlayerList().getPlayers().containsAll(players),
-                    "all 16 dummy players must be registered in the real server player list");
+                    "all 19 dummy players must be registered in the real server player list");
             started = true;
-            DepthDirectorMod.LOGGER.info("Director verifyWorld started 15 concurrent natural cohorts plus surface sentinel");
+            DepthDirectorMod.LOGGER.info("Director verifyWorld started {} concurrent natural cohorts plus surface sentinel", cohorts.size());
         }
 
         void tick() {
@@ -609,9 +622,10 @@ public final class DepthDirectorWorldGameTests {
         private static WorldSpawn spawnAt(ServerLevel level, List<ServerPlayer> players,
                                           EcologyRegistry.Blend blend, double depth, RandomSource random,
                                           BlockPos position, boolean allowHeavy, int maximumCost) {
-            DepthDirectorDiagnostics.SpawnOutcome result = DepthDirectorDiagnostics.spawnAt(
+            CatalogueRootAccess.Outcome result = CatalogueRootAccess.spawnAt(
                     level, players, blend, depth, random, position, allowHeavy, maximumCost);
-            return new WorldSpawn(result.spawned(), result.mob(), result.entity());
+            return new WorldSpawn(result.spawned(), result.mob(), result.entity(), result.selectedEntity(),
+                    result.nativeReplacement(), result.paidAndSameFamily(), result.paidRoot());
         }
 
         private static String diagnose(ServerLevel level, List<ServerPlayer> players,
@@ -623,5 +637,6 @@ public final class DepthDirectorWorldGameTests {
 
     private record Xz(int x, int z) {}
     private record PlannedCohort(EcologyDefinition ecology, int y, BlockPos center) {}
-    private record WorldSpawn(boolean spawned, Mob mob, ResourceLocation entity) {}
+    private record WorldSpawn(boolean spawned, Mob mob, ResourceLocation entity, ResourceLocation selectedEntity,
+                              boolean nativeReplacement, boolean paidAndSameFamily, java.util.UUID paidRoot) {}
 }

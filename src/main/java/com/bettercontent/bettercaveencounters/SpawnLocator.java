@@ -40,7 +40,7 @@ final class SpawnLocator {
     static final String TARGET_NBT = "DepthDirectorTarget";
     static final TagKey<EntityType<?>> DENIED = TagKey.create(Registries.ENTITY_TYPE,
             new ResourceLocation(DepthDirectorMod.MOD_ID, "denied"));
-    private static final UUID APPROACH_RANGE_MODIFIER = UUID.fromString("6628878d-4b58-4431-b877-baa7027270bc");
+    static final UUID APPROACH_RANGE_MODIFIER = UUID.fromString("6628878d-4b58-4431-b877-baa7027270bc");
 
     private SpawnLocator() {}
 
@@ -87,6 +87,13 @@ final class SpawnLocator {
     static SpawnResult spawnAt(ServerLevel level, List<ServerPlayer> players, EcologyRegistry.Blend blend,
                                double depth, RandomSource random, BlockPos position, boolean allowHeavy,
                                int maximumCost, Predicate<EcologyDefinition.Entry> selectable) {
+        return spawnAt(level, players, blend, depth, random, position, allowHeavy, maximumCost, selectable,
+                DirectorLineages.rootAuthority());
+    }
+
+    static SpawnResult spawnAt(ServerLevel level, List<ServerPlayer> players, EcologyRegistry.Blend blend,
+                               double depth, RandomSource random, BlockPos position, boolean allowHeavy,
+                               int maximumCost, Predicate<EcologyDefinition.Entry> selectable, RootAuthority authority) {
         if (players.isEmpty()) return SpawnResult.failed();
         boolean mapped = GeologicalRegistry.INSTANCE.sample(level, position).mapped();
         for (int attempt = 0; attempt < 8; attempt++) {
@@ -109,15 +116,15 @@ final class SpawnLocator {
             ensureApproachRange(mob);
             Candidate candidate = validateCandidate(level, players, position, mob).orElse(null);
             if (candidate == null) { mob.discard(); continue; }
-            SpawnResult result = finishSpawn(level, candidate, selection, policy, mob, random, players);
-            if (result.spawned()) return result;
+            SpawnResult result = finishSpawn(level, candidate, selection, policy, mob, random, players, authority);
+            if (result.spawned() || result.terminal()) return result;
         }
         return SpawnResult.failed();
     }
 
     private static SpawnResult finishSpawn(ServerLevel level, Candidate candidate, Selection selection,
                                            GeologicalDefinition.Offspring policy, Mob mob, RandomSource random,
-                                           List<ServerPlayer> players) {
+                                           List<ServerPlayer> players, RootAuthority authority) {
         mob.moveTo(candidate.position.getX() + 0.5, candidate.position.getY(), candidate.position.getZ() + 0.5,
                 random.nextFloat() * 360.0F, 0.0F);
         if (!eventSpawnPositionAllowed(mob, level) || !level.noCollision(mob)
@@ -126,13 +133,31 @@ final class SpawnLocator {
             mob.discard();
             return SpawnResult.failed();
         }
-        try (DirectorLineages.RootAdmission admission = DirectorLineages.beginRoot(mob, selection.role, policy, selection.cost)) {
+        try (DirectorLineages.RootAdmission admission = DirectorLineages.beginRoot(mob, selection.role, policy, selection.cost, authority)) {
             if (admission == null) { mob.discard(); return SpawnResult.failed(); }
             bindCombatTarget(mob, candidate.target);
             mob.getPersistentData().putString("DepthDirectorSpawnHabitat", selection.habitat);
+            admission.prepareReplacement(
+                    actual -> RootReplacementBody.provisionalGeometry(level, players, candidate.target, actual),
+                    actual -> RootReplacementBody.finalAdmission(level, players, candidate.target, actual)
+                            && eventSpawnPositionAllowed(actual, level),
+                    actual -> {
+                        ensureApproachRange(actual);
+                        bindCombatTarget(actual, candidate.target);
+                        actual.getPersistentData().putString("DepthDirectorSpawnHabitat", selection.habitat);
+                    });
             return CausalMobSpawns.as(mob, () -> {
-                ForgeEventFactory.onFinalizeSpawn(mob, level, level.getCurrentDifficultyAt(candidate.position),
-                        MobSpawnType.EVENT, null, null);
+                CaveNativeRootBridge.finalizeRoot(admission, () -> {
+                    ForgeEventFactory.onFinalizeSpawn(mob, level, level.getCurrentDifficultyAt(candidate.position),
+                            MobSpawnType.EVENT, null, null);
+                    return null;
+                });
+                if (admission.replacementObserved()) {
+                    Mob actual = admission.commitReplacement();
+                    if (actual == null) return SpawnResult.terminalFailure();
+                    return new SpawnResult(true, actual, ForgeRegistries.ENTITY_TYPES.getKey(actual.getType()),
+                            selection.cost + policy.credits(), selection.role, false, selection.entity, true, mob.getUUID());
+                }
                 if (mob.isSpawnCancelled() || !admission.validFinalizedSize() || validateCandidate(level, players, candidate.position, mob).isEmpty()
                         || !eventSpawnPositionAllowed(mob, level)
                         || !level.getWorldBorder().isWithinBounds(mob.getBoundingBox()) || !level.addFreshEntity(mob)) {
@@ -296,7 +321,7 @@ final class SpawnLocator {
         return CandidateValidation.accepted(new Candidate(position.immutable(), target));
     }
 
-    private static boolean isFloor(ServerLevel level, BlockPos position) {
+    static boolean isFloor(ServerLevel level, BlockPos position) {
         return level.getBlockState(position).getCollisionShape(level, position).isEmpty()
                 && level.getFluidState(position).isEmpty()
                 && level.getBlockState(position.above()).getCollisionShape(level, position.above()).isEmpty()
@@ -304,7 +329,7 @@ final class SpawnLocator {
                 && level.getBlockState(position.below()).isFaceSturdy(level, position.below(), net.minecraft.core.Direction.UP);
     }
 
-    private static boolean visibleToAny(ServerLevel level, BlockPos position, List<ServerPlayer> players) {
+    static boolean visibleToAny(ServerLevel level, BlockPos position, List<ServerPlayer> players) {
         Vec3 destination = Vec3.atCenterOf(position).add(0.0, 0.5, 0.0);
         for (ServerPlayer player : players) {
             if (player.distanceToSqr(destination) > 128.0 * 128.0) continue;
@@ -330,7 +355,12 @@ final class SpawnLocator {
             this(type, entity, cost, role, "legacy_noise");
         }
     }
-    record SpawnResult(boolean spawned, Mob mob, ResourceLocation entity, int cost, EcologyDefinition.Role role) {
+    record SpawnResult(boolean spawned, Mob mob, ResourceLocation entity, int cost, EcologyDefinition.Role role,
+                       boolean terminal, ResourceLocation selectedEntity, boolean nativeReplacement, UUID paidRoot) {
+        SpawnResult(boolean spawned, Mob mob, ResourceLocation entity, int cost, EcologyDefinition.Role role) {
+            this(spawned, mob, entity, cost, role, false, entity, false, mob == null ? null : mob.getUUID());
+        }
         static SpawnResult failed() { return new SpawnResult(false, null, null, 0, null); }
+        static SpawnResult terminalFailure() { return new SpawnResult(false, null, null, 0, null, true, null, false, null); }
     }
 }

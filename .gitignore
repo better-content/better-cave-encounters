@@ -3,5 +3,7 @@ build/
 run/
 run-gametest/
 run-world-gametest/
+run-geology-gametest/
+logs/
 *.iml
 .idea/

@@ -1,0 +1,37 @@
+{
+  "schema": "bc.cave.world-fixture.v3",
+  "owning_mod": "better_cave_encounters",
+  "historical_source_head": "de2b4875c92996d20081901e929b7034947aa677",
+  "cases": [
+    {
+      "source": "src/worldGameTest/java/com/bettercontent/bettercaveencounters/DepthDirectorWorldGameTests.java",
+      "method": "realCataloguePlayersAndNaturalDepthCadence",
+      "template_namespace": "better_cave_encounters_world_tests",
+      "template": "director_cave",
+      "timeout_ticks": 80000,
+      "original_sha256": "9a39fbcdf1052379ad368aeb8c02b351e2cc49dcb25ff7397870d48dbc06e6af",
+      "adapted_sha256": "02b4d3e6682c4ed6ec7373ef8f04c95b0cea553e8a974065770ca6219dee8edf",
+      "pre_initial_root_transaction_sha256": "dba2bb24b6dff6457053a983e2e06b237fee303a92e013890bddca5122184acd",
+      "initial_root_adaptations": "src/worldGameTest/world-initial-root-adaptations.json",
+      "profile_namespace": "better_cave_encounters_world_tests",
+      "engine_template_filter": "better_cave_encounters_world_tests"
+    },
+    {
+      "source": "src/worldGameTest/java/com/bettercontent/bettercaveencounters/GeologicalWorldGameTests.java",
+      "method": "pinnedGeologyCatalogueLineagesAndNaturalPopulations",
+      "template_namespace": "better_cave_encounters_world_tests",
+      "template": "director_cave",
+      "timeout_ticks": 240000,
+      "original_sha256": "6bc56d7fa8781e6f1954558e8d5cb4a8f1463348705a7a814a3965dad2b18cc7",
+      "adapted_sha256": "355ef5ecce42d7a10adeb4ffab991f37b3bb56863d2aa8adc0063232366db279",
+      "profile_namespace": "better_cave_encounters_geology_tests",
+      "engine_template_filter": "better_cave_encounters_world_tests"
+    }
+  ],
+  "required_case_counts": {
+    "world": 1,
+    "geology": 1
+  },
+  "historical_descriptor_sha256": "39e67aadf9d12d389dfc4a8473113d514728a8c19901bf640119a110bf7e8f81",
+  "catalogue_scope": "Strict exact six current authored IDs; six x original depths = 18 cohorts, not historical five/15. No pacing/deadline relaxation."
+}

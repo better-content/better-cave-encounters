@@ -202,6 +202,7 @@ final class DirectorRuntime {
     }
 
     void registerMob(Mob mob) {
+        if (CaveNativeRootBridge.provisional(mob)) return;
         if (SpawnLocator.isDirectorMob(mob)) {
             directorMobs.add(mob.getUUID());
             DirectorLineages.observe(mob);
@@ -236,6 +237,25 @@ final class DirectorRuntime {
         spawnsThisTick++;
         spawnsThisSecond++;
         return true;
+    }
+
+    RootAuthority rootAuthority(UUID encounterId, UUID familyId) {
+        Encounter reserved = encounterId == null ? null : encounters.get(encounterId);
+        return new RootAuthority() {
+            @Override public RootCharge reserve(int cost) { return reserveRootCost(encounterId, cost); }
+            @Override public boolean allowsInitialReplacement() { return reserved != null && stillValid(); }
+            @Override public boolean stillValid() {
+                return reserved != null && RootAuthorityRules.liveOwner(encounters.get(encounterId) == reserved,
+                        familyId, reserved.family, reserved.phase, reserved.packetTelegraphUntil, reserved.queuedSpawns);
+            }
+        };
+    }
+
+    /** The in-flight original slot is already included: never reserve or debit a second admission. */
+    boolean reservedRootSlotStillFits(MinecraftServer server) {
+        return RootAuthorityRules.heldSlotFits(directorMobs.size(), DirectorLineages.pending(server),
+                DirectorConfig.GLOBAL_DIRECTOR_CAP.get(), spawnsThisTick, DirectorConfig.MAX_SPAWNS_PER_TICK.get(),
+                spawnsThisSecond, DirectorConfig.MAX_SPAWNS_PER_SECOND.get());
     }
 
     RootCharge reserveRootCost(UUID encounterId, int cost) {
@@ -418,6 +438,9 @@ final class DirectorRuntime {
         Encounter encounter = new Encounter(UUID.randomUUID(), group.stream().map(ServerPlayer::getUUID).toList(), blend,
                 depth, profile, now + profile.warningTicks());
         encounters.put(encounter.id, encounter);
+        if (PlaytestDiagnostics.LOG.enabled("director")) PlaytestDiagnostics.LOG.debug("director", "director.encounter", com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.Context.server("", now),
+                "created", "pressure_admitted", () -> com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.fields(
+                    "encounter", encounter.id, "family", encounter.family, "participants", group.size(), "budget", encounter.remainingBudget));
         DirectorSavedData data = DirectorSavedData.get(server);
         for (ServerPlayer player : group) {
             participantEncounter.put(player.getUUID(), encounter.id);
@@ -447,7 +470,7 @@ final class DirectorRuntime {
     }
 
     private void updateEncounters(MinecraftServer server, long now) {
-        mergeRejoinedEncounters(server);
+        mergeRejoinedEncounters(server, now);
         List<Encounter> localityChildren = new ArrayList<>();
         Iterator<Encounter> iterator = encounters.values().iterator();
         while (iterator.hasNext()) {
@@ -482,9 +505,10 @@ final class DirectorRuntime {
                     } else if (next == DirectorPolicy.Phase.RETIRED) {
                         encounter.phase = next;
                         restoreFrozenPressure(server, encounter);
-                        retire(encounter, iterator);
+                        retire(encounter, iterator, now);
                     } else {
                         encounter.phase = next;
+                        outcome(encounter, now, "director.phase", "surge", "warning_complete");
                         encounter.phaseUntil = now + encounter.profile.surgeTicks();
                         encounter.lastPacketAt = -1L;
                     }
@@ -531,7 +555,7 @@ final class DirectorRuntime {
             if (encounter.phase == DirectorPolicy.Phase.RECOVERY
                     && DirectorPolicy.transition(encounter.phase, now, encounter.phaseUntil,
                     !underground.isEmpty(), true, 0) == DirectorPolicy.Phase.RETIRED) {
-                retire(encounter, iterator);
+                retire(encounter, iterator, now);
             }
         }
         localityChildren.forEach(child -> encounters.put(child.id, child));
@@ -566,10 +590,14 @@ final class DirectorRuntime {
             children.add(child);
             child.participants.forEach(player -> participantEncounter.put(player, child.id));
         }
+        if (PlaytestDiagnostics.LOG.enabled("director")) PlaytestDiagnostics.LOG.debug("director", "director.split", com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.Context.server("", now),
+                "split", "locality_separated", () -> com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.fields(
+                    "encounter", encounter.id, "family", encounter.family, "children", participants.size(),
+                    "remaining_budget", encounter.remainingBudget, "spent_budget", encounter.spentBudget));
         return true;
     }
 
-    private void mergeRejoinedEncounters(MinecraftServer server) {
+    private void mergeRejoinedEncounters(MinecraftServer server, long now) {
         Map<UUID, List<Encounter>> byFamily = new HashMap<>();
         encounters.values().forEach(encounter -> byFamily.computeIfAbsent(encounter.family, ignored -> new ArrayList<>()).add(encounter));
         for (List<Encounter> family : byFamily.values()) {
@@ -581,6 +609,10 @@ final class DirectorRuntime {
             family.forEach(encounter -> encounters.remove(encounter.id));
             encounters.put(merged.id, merged);
             merged.participants.forEach(player -> participantEncounter.put(player, merged.id));
+            if (PlaytestDiagnostics.LOG.enabled("director")) PlaytestDiagnostics.LOG.debug("director", "director.merge", com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.Context.server("", now),
+                    "merged", "locality_rejoined", () -> com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.fields(
+                        "encounter", merged.id, "family", merged.family, "parents", family.size(),
+                        "remaining_budget", merged.remainingBudget, "spent_budget", merged.spentBudget));
         }
     }
 
@@ -609,9 +641,9 @@ final class DirectorRuntime {
                             encounter.blend, encounter.depth, random, warnedApproach,
                             !encounter.heavySpawnedInPacket && !DirectorLineages.hasHeavy(server, encounter.family),
                             encounter.remainingBudget, entry -> entry.allowsPacketCount(
-                                    encounter.packetCounts.getOrDefault(entry.entity(), 0))
+                                    selectedQuota(encounter.packetCounts, entry.entity()))
                                     && entry.allowsEncounterCount(
-                                    encounter.encounterCounts.getOrDefault(entry.entity(), 0),
+                                    selectedQuota(encounter.encounterCounts, entry.entity()),
                                     encounter.participants.size())));
             encounter.queuedSpawns--;
             if (!result.spawned()) {
@@ -619,6 +651,7 @@ final class DirectorRuntime {
                 encounter.lastFailure = "warned_approach_rejected";
                 encounter.queuedSpawns = 0;
                 cancelPacketTelegraph(encounter);
+                outcome(encounter, now, "director.spawn_packet", "cancelled", "warned_approach_rejected");
                 continue;
             }
             encounter.nextSector = DirectorPolicy.nextSectorAfterSpawn(warnedSector,
@@ -632,6 +665,9 @@ final class DirectorRuntime {
             }
             // RootAdmission prepaid base + lineage cost before native finalization;
             // successful roots are already charged and must not be charged twice.
+            if (PlaytestDiagnostics.LOG.enabled("director")) PlaytestDiagnostics.LOG.debug("director", "director.spawn", com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.Context.server("", now),
+                    "inserted", "native_admission", () -> com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.fields(
+                        "encounter", encounter.id, "family", encounter.family, "remaining_budget", encounter.remainingBudget));
             encounter.lastFailure = "none";
             encounter.lastSpawnHabitat = result.mob().getPersistentData().getString("DepthDirectorSpawnHabitat");
             if (encounter.queuedSpawns > 0) {
@@ -641,6 +677,13 @@ final class DirectorRuntime {
             }
         }
         roundRobinOffset = DirectorPolicy.nextRoundRobinOffset(roundRobinOffset, active.size());
+    }
+
+    private static int selectedQuota(Map<ResourceLocation, Integer> counts, ResourceLocation selected) {
+        return RootReplacementAttempt.quotaCount(selected.toString(), id -> {
+            for (var entry : counts.entrySet()) if (entry.getKey().toString().equals(id)) return entry.getValue();
+            return 0;
+        });
     }
 
     private void playWarning(ServerLevel level, List<ServerPlayer> players, Encounter encounter) {
@@ -713,12 +756,17 @@ final class DirectorRuntime {
     }
 
     private void suspend(Encounter encounter, long now, String reason) {
+        if (encounter.phase == DirectorPolicy.Phase.SUSPENDED && !java.util.Objects.equals(reason, encounter.suspensionReason))
+            outcome(encounter, now, "director.suspension_reason", "changed", reason);
         encounter.suspensionReason = reason;
         encounter.lastFailure = reason;
         if (encounter.phase == DirectorPolicy.Phase.SUSPENDED) return;
         encounter.suspendedPhase = encounter.phase;
         encounter.suspendedTicks = Math.max(0L, encounter.phaseUntil - now);
         encounter.phase = DirectorPolicy.Phase.SUSPENDED;
+        if (PlaytestDiagnostics.LOG.enabled("director"))
+            com.bettercontent.bettercaveencounters.diagnostics.FeatureTelemetry.suspended(PlaytestDiagnostics.LOG,
+                    com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.Context.server("", now), encounter.id, encounter.family, reason);
         encounter.queuedSpawns = 0;
         cancelPacketTelegraph(encounter);
     }
@@ -726,11 +774,15 @@ final class DirectorRuntime {
     private boolean resumeIfPursuitAvailable(MinecraftServer server, Encounter encounter, long now) {
         List<ServerPlayer> pursuit = encounter.pursuitPlayers(server, this::eligible);
         if (pursuit.isEmpty()) {
+            if (!"no_eligible_pursuit".equals(encounter.suspensionReason))
+                outcome(encounter, now, "director.suspension_reason", "changed", "no_eligible_pursuit");
             encounter.suspensionReason = "no_eligible_pursuit";
             encounter.lastFailure = encounter.suspensionReason;
             return false;
         }
         if (!SpawnLocator.hasApproach(pursuit.get(0).serverLevel(), pursuit, random)) {
+            if (!"route_unavailable".equals(encounter.suspensionReason))
+                outcome(encounter, now, "director.suspension_reason", "changed", "route_unavailable");
             encounter.suspensionReason = "route_unavailable";
             encounter.lastFailure = encounter.suspensionReason;
             return false;
@@ -739,11 +791,13 @@ final class DirectorRuntime {
         encounter.phaseUntil = now + encounter.suspendedTicks;
         encounter.suspendedTicks = 0L;
         encounter.suspensionReason = "none";
+        outcome(encounter, now, "director.phase", "resumed", "pursuit_available");
         return true;
     }
 
     private void beginRecovery(MinecraftServer server, Encounter encounter, long now) {
         encounter.phase = DirectorPolicy.Phase.RECOVERY;
+        outcome(encounter, now, "director.phase", "recovery", "surge_complete");
         encounter.queuedSpawns = DirectorPolicy.queuedWorkAfterTransition(encounter.queuedSpawns, encounter.phase);
         cancelPacketTelegraph(encounter);
         encounter.phaseUntil = now + encounter.profile.recoveryTicks();
@@ -760,12 +814,20 @@ final class DirectorRuntime {
         });
     }
 
-    private void retire(Encounter encounter, Iterator<Encounter> iterator) {
+    private static void outcome(Encounter encounter, long nativeTick, String event, String result, String reason) {
+        var log = PlaytestDiagnostics.LOG;
+        if (log.enabled("director")) log.debug("director", event,
+                com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.Context.server("", nativeTick), result, reason,
+                () -> com.bettercontent.bettercaveencounters.diagnostics.PlaytestLog.fields("encounter", encounter.id, "family", encounter.family, "phase", encounter.phase));
+    }
+
+    private void retire(Encounter encounter, Iterator<Encounter> iterator, long now) {
         encounter.participants.forEach(player -> participantEncounter.remove(player, encounter.id));
         // The mobs remain ordinary hostile entities after the encounter ends; stop
         // attributing newly loaded or missing entities to the retired encounter.
         mobEncounter.entrySet().removeIf(entry -> entry.getValue().equals(encounter.id));
         iterator.remove();
+        outcome(encounter, now, "director.encounter", "retired", "encounter_complete");
     }
 
     private void cleanupMobs(MinecraftServer server) {

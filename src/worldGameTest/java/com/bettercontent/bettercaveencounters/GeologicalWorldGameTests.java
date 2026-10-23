@@ -43,7 +43,6 @@ import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.level.ExplosionEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -63,7 +62,6 @@ import java.util.Set;
 import java.util.UUID;
 
 /** Real native actors and the real natural spawning loop. No command-spawn ambient substitute. */
-@GameTestHolder("better_cave_encounters_geology_tests")
 @PrefixGameTestTemplate(false)
 public final class GeologicalWorldGameTests {
     private GeologicalWorldGameTests() {}
@@ -142,7 +140,7 @@ public final class GeologicalWorldGameTests {
                 player.getFoodData().setFoodLevel(20);
                 // Isolate native mechanics from scheduled waves; the original verifyWorld
                 // fixture separately exercises the unmodified full pacing/pressure loop.
-                DirectorSavedData.get(level.getServer()).track(player.getUUID()).cooldownUntil(now + 20_000);
+                DirectorSavedData.get(level.getServer()).track(player.getUUID()).recoveryUntil(now + 20_000);
             }
             checkActualNaturalInsertions();
             if (phase == 0) {
@@ -233,7 +231,7 @@ public final class GeologicalWorldGameTests {
             SpawnLocator.SpawnResult result = DirectorLineages.ownedBy(new UUID(0, 0), family, () ->
                     SpawnLocator.spawnAt(level, List.of(player), deliberatelyUnrelatedTiming, 0, RandomSource.create(0xBADC0DEL + index + attempts),
                             candidate, true, 128, e -> e.entity().equals(currentId)));
-            helper.assertTrue(result.spawned(), "warned-position native admission failed for " + currentId + ": " + SpawnLocator.diagnose(level, List.of(player), currentId, candidate));
+            helper.assertTrue(result.spawned(), "warned-position native admission failed for " + currentId + ": " + DepthDirectorDiagnostics.diagnose(level, List.of(player), currentId, candidate));
             current = result.mob(); countAdmission(); startingPosition = current.position(); caseStarted = level.getGameTime();
             GeologicalDefinition.Entry entry = habitat.director().stream().filter(e -> e.roster().entity().equals(currentId)).findFirst().orElseThrow();
             helper.assertTrue(result.cost() == entry.roster().cost() + entry.offspring().credits(), "base plus prepaid reservation must be charged once");
@@ -416,7 +414,7 @@ public final class GeologicalWorldGameTests {
         }
         @SubscribeEvent(priority = EventPriority.LOWEST)
         public void offspring(com.bettercontent.bettercompatfixes.api.event.MobOffspringAdmissionEvent event) {
-            if (currentId == null || !SpawnLocator.isDirectorMob(event.parent())) return;
+            if (currentId == null || !(event.parent() instanceof Mob parent) || !SpawnLocator.isDirectorMob(parent)) return;
             event.onCompletion(inserted -> {
                 if (inserted) { countAdmission(); offspring.put(event.child().getUUID(), event.child()); }
             });

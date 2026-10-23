@@ -7,8 +7,11 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.monster.Slime;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -22,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /** Durable finite credits. Encounter retirement, unload and reload never mint new credits. */
@@ -57,21 +62,37 @@ public final class DirectorLineages extends SavedData {
         return new GeologicalDefinition.Offspring(GeologyWeights.slimeEnvelope(4), 4, Map.of(id, 20));
     }
 
+    static RootAuthority rootAuthority() {
+        Owner owner = OWNER.get();
+        return DirectorRuntime.INSTANCE.rootAuthority(owner == null ? null : owner.encounter(), owner == null ? null : owner.family());
+    }
+
     static RootAdmission beginRoot(Mob root, EcologyDefinition.Role role, GeologicalDefinition.Offspring policy, int baseCost) {
+        return beginRoot(root, role, policy, baseCost, rootAuthority());
+    }
+
+    static RootAdmission beginRoot(Mob root, EcologyDefinition.Role role, GeologicalDefinition.Offspring policy,
+                                   int baseCost, RootAuthority authority) {
         ServerLevel level = (ServerLevel) root.level();
         DirectorLineages data = get(level.getServer());
         Owner owner = OWNER.get();
-        DirectorRuntime.RootCharge charge = DirectorRuntime.INSTANCE.reserveRootCost(owner == null ? null : owner.encounter(), baseCost + policy.credits());
+        DirectorRuntime.RootCharge charge = authority.reserve(baseCost + policy.credits());
         if (charge == null) return null;
-        Family lineage = new Family(root.getUUID(), owner == null ? NONE : owner.encounter(),
-                owner == null ? root.getUUID() : owner.family(), policy, policy.credits());
-        lineage.members.add(root.getUUID());
-        if (role == EcologyDefinition.Role.HEAVY) lineage.heavies.add(root.getUUID());
-        data.lineages.put(lineage.id, lineage);
-        data.pendingRoots++;
+        Family lineage = data.beginFamily(root.getUUID(), owner == null ? NONE : owner.encounter(),
+                owner == null ? root.getUUID() : owner.family(), policy, role == EcologyDefinition.Role.HEAVY);
         mark(root, lineage.id);
         data.setDirty();
-        return new RootAdmission(data, lineage, root, charge);
+        return new RootAdmission(data, lineage, root, charge, authority, role == EcologyDefinition.Role.HEAVY);
+    }
+
+    /** Pure membership initialization; the charge is already held by beginRoot. No new authority. */
+    Family beginFamily(UUID root, UUID encounter, UUID encounterFamily, GeologicalDefinition.Offspring policy, boolean heavy) {
+        Family lineage = new Family(root, encounter, encounterFamily, policy, policy.credits());
+        lineage.members.add(root);
+        if (heavy) lineage.heavies.add(root);
+        lineages.put(lineage.id, lineage);
+        pendingRoots++;
+        return lineage;
     }
 
     static void observe(Mob mob) {
@@ -143,7 +164,8 @@ public final class DirectorLineages extends SavedData {
                 + " lineage_failure=" + data.lastFailure;
     }
 
-    @SubscribeEvent public static void offspring(MobOffspringAdmissionEvent event) {
+    @SubscribeEvent(receiveCanceled = true) public static void offspring(MobOffspringAdmissionEvent event) {
+        if (CaveNativeRootBridge.admit(event)) return;
         if (event.isCanceled() || !(event.parent() instanceof Mob parent) || !SpawnLocator.isDirectorMob(parent)
                 || !(parent.level() instanceof ServerLevel level)) return;
         DirectorLineages data = get(level.getServer());
@@ -290,12 +312,18 @@ public final class DirectorLineages extends SavedData {
     }
 
     private record Owner(UUID encounter, UUID family) {}
-    private static final class Family {
+    static final class Family {
         final UUID id, encounter, encounterFamily;
         final GeologicalDefinition.Offspring policy;
         final LineageCredits<ResourceLocation> credits;
         boolean pending = true, rollingBack;
         final Set<UUID> members = new HashSet<>(), heavies = new HashSet<>(), dead = new HashSet<>();
+        void replaceInitialRoot(UUID actual, boolean heavy) {
+            if (!pending || actual.equals(id)) throw new IllegalStateException("Not a pending distinct root replacement");
+            members.remove(id); heavies.remove(id); dead.remove(id);
+            members.add(actual);
+            if (heavy) heavies.add(actual);
+        }
         Family(UUID id, UUID encounter, UUID encounterFamily, GeologicalDefinition.Offspring policy, int funded) {
             this(id, encounter, encounterFamily, policy, new LineageCredits<>(policy.children(), funded));
         }
@@ -310,9 +338,78 @@ public final class DirectorLineages extends SavedData {
         private final Family family;
         private final Mob root;
         private final DirectorRuntime.RootCharge charge;
+        private final RootAuthority authority;
+        private final boolean heavy;
+        private final RootReplacementAttempt<Mob> replacement;
+        private Predicate<Mob> beforeInsert = mob -> false, afterInsert = mob -> false;
+        private Consumer<Mob> initialize = mob -> {};
+        private RootReplacementBody.MemberSnapshot snapshot;
+        private Entity nativeProduct;
+        private EntityType<?> expectedNativeType;
         private boolean committed, closed;
-        RootAdmission(DirectorLineages data, Family family, Mob root, DirectorRuntime.RootCharge charge) {
+        RootAdmission(DirectorLineages data, Family family, Mob root, DirectorRuntime.RootCharge charge,
+                      RootAuthority authority, boolean heavy) {
             this.data = data; this.family = family; this.root = root; this.charge = charge;
+            this.authority = authority; this.heavy = heavy; replacement = new RootReplacementAttempt<>(root);
+        }
+        void prepareReplacement(Predicate<Mob> beforeInsert, Predicate<Mob> afterInsert, Consumer<Mob> initialize) {
+            this.beforeInsert = beforeInsert; this.afterInsert = afterInsert; this.initialize = initialize;
+        }
+        boolean allowsNativeCall(EntityType<?> type, ServerLevel level, BlockPos position, MobSpawnType reason, Entity parent) {
+            ResourceLocation rootType = ForgeRegistries.ENTITY_TYPES.getKey(root.getType());
+            ResourceLocation variant = ForgeRegistries.ENTITY_TYPES.getKey(type);
+            return !closed && !committed && parent == root && root.level() == level && !root.isRemoved()
+                    && reason == MobSpawnType.MOB_SUMMONED && position.equals(root.blockPosition())
+                    && rootType != null && RootReplacementAttempt.DAMNED.equals(rootType.toString())
+                    && variant != null && RootReplacementAttempt.VARIANTS.contains(variant.toString())
+                    && authority.allowsInitialReplacement() && authority.stillValid();
+        }
+        void beginNative(EntityType<?> type) {
+            replacement.beginNative(ForgeRegistries.ENTITY_TYPES.getKey(type).toString());
+            expectedNativeType = type;
+        }
+        void nativeReturned(Entity value) {
+            nativeProduct = value;
+            replacement.returned(value instanceof Mob mob ? mob : null);
+        }
+        boolean provisional(Mob mob) { return !closed && !committed && replacement.candidate() == mob; }
+        boolean admitReplacement(MobOffspringAdmissionEvent event) {
+            ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(event.child().getType());
+            if (id == null || event.child().getType() != expectedNativeType
+                    || !replacement.matches(event.parent() instanceof Mob parent ? parent : null, id.toString())) return false;
+            Mob child = event.child();
+            replacement.claim(child);
+            event.onCompletion(inserted -> replacement.complete(child, inserted));
+            if (event.isCanceled()) return true; // Never undo an earlier veto or modify its candidate.
+            if (child.level() != root.level() || !child.isAlive() || child.isRemoved() || child.isSpawnCancelled()
+                    || child.getType().is(SpawnLocator.DENIED) || !authority.stillValid()
+                    || !DirectorRuntime.INSTANCE.reservedRootSlotStillFits(((ServerLevel) root.level()).getServer())) {
+                event.setCanceled(true); return true;
+            }
+            snapshot = new RootReplacementBody.MemberSnapshot(child);
+            mark(child, family.id);
+            initialize.accept(child);
+            if (!beforeInsert.test(child)) event.setCanceled(true);
+            return true;
+        }
+        boolean replacementObserved() { return replacement.observed(); }
+        Mob commitReplacement() {
+            Mob actual = replacement.candidate();
+            boolean discarded = root.getRemovalReason() == Entity.RemovalReason.DISCARDED;
+            // Nonnull native returns can follow vetoed insertion. They must never reach final initialization.
+            if (!replacement.canCommit(discarded, true)) return null;
+            boolean valid = actual != null && actual.isAlive() && !actual.isRemoved() && !actual.isSpawnCancelled()
+                    && validFinalizedSize() && actual.level() == root.level() && authority.stillValid()
+                    && DirectorRuntime.INSTANCE.reservedRootSlotStillFits(((ServerLevel) root.level()).getServer())
+                    && afterInsert.test(actual)
+                    && actual.isAlive() && !actual.isRemoved() && !actual.isSpawnCancelled()
+                    && actual.level() == root.level() && authority.stillValid()
+                    && DirectorRuntime.INSTANCE.reservedRootSlotStillFits(((ServerLevel) root.level()).getServer());
+            if (!replacement.canCommit(discarded, valid)) return null;
+            replacement.commit(discarded, valid);
+            family.replaceInitialRoot(actual.getUUID(), heavy);
+            commit();
+            return actual;
         }
         boolean validFinalizedSize() {
             return !(root instanceof Slime slime) || (family.policy.maximumSlimeSize() > 0
@@ -324,37 +421,47 @@ public final class DirectorLineages extends SavedData {
             if (closed) return;
             closed = true;
             data.pendingRoots--;
+            replacement.close();
             if (committed) { charge.close(); return; }
             family.rollingBack = true;
             List<Entity> rollback = new ArrayList<>(); rollback.add(root);
+            if (replacement.candidate() != null) rollback.add(replacement.candidate());
+            if (nativeProduct != null && !rollback.contains(nativeProduct)) rollback.add(nativeProduct);
             for (UUID id : List.copyOf(family.members))
                 for (ServerLevel level : ((ServerLevel) root.level()).getServer().getAllLevels()) {
                     Entity child = level.getEntity(id);
-                    if (child != null && child != root) rollback.add(child);
+                    if (child != null && child != root && !rollback.contains(child)) rollback.add(child);
                 }
-            Throwable failure = null;
-            for (Entity entity : rollback) {
-                try { if (!entity.isRemoved()) entity.discard(); }
-                catch (RuntimeException | Error error) {
-                    if (failure == null) failure = error; else if (failure != error) failure.addSuppressed(error);
-                }
-            }
-            if (failure != null) {
+            RootRollback.removeAll(rollback, Entity::isRemoved, Entity::discard, failure -> {
                 // Never refund pressure while a broken native remover may have left live
                 // children. Keep the paid frozen account and surface a qualification failure.
                 family.pending = false; family.rollingBack = false; charge.commit(); charge.close();
                 data.lastFailure = "native_rollback_failure"; data.setDirty();
                 DepthDirectorMod.LOGGER.error("Director root rollback could not remove every native entity", failure);
-                if (failure instanceof RuntimeException error) throw error;
-                throw (Error) failure;
-            }
+                if (replacement.observed()) {
+                    // Keep paid pressure even for a returned body with a vetoed/unobserved callback.
+                    // This remains a fatal failure, never permission for another native spawn.
+                    if (root.isRemoved()) {
+                        family.members.remove(root.getUUID());
+                        family.heavies.remove(root.getUUID());
+                        family.dead.remove(root.getUUID());
+                    }
+                    for (Entity entity : rollback) if (entity instanceof Mob survivor && !survivor.isRemoved()) {
+                        mark(survivor, family.id);
+                        family.members.add(survivor.getUUID());
+                        if (heavy) family.heavies.add(survivor.getUUID());
+                        DirectorRuntime.INSTANCE.registerMob(survivor);
+                    }
+                }
+            });
             for (Entity entity : rollback) DirectorRuntime.INSTANCE.removeMob(entity.getUUID());
             data.lineages.remove(family.id);
             root.getPersistentData().remove(LINEAGE);
             root.getPersistentData().remove(SpawnLocator.PROVENANCE_NBT);
             root.removeTag(SpawnLocator.PROVENANCE_TAG);
             data.setDirty();
-            charge.close();
+            if (snapshot != null) RootRollback.restoreAndRefund(snapshot::restore, charge);
+            else charge.close();
         }
     }
 }

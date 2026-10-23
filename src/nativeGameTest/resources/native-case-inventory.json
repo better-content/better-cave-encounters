@@ -1,0 +1,20 @@
+{
+  "namespace": "better_cave_encounters",
+  "required_count": 12,
+  "baseline": [
+    "operatorInspectionIsReadOnlyAndHasNoForceCommand",
+    "directorBoundaryTracksLocalLeafIgnoringSurface",
+    "ecologiesLoadAndHiddenDarkReachableGeometryIsAccepted",
+    "directLineOfSightRejectsCandidate",
+    "torchLightRejectsCandidateAfterLightingSettles",
+    "admittedSkylightRejectsCandidate",
+    "closedGateProducesUnreachablePath",
+    "solidAndFluidOccupationRejectCandidate",
+    "eventAuthoredSpawnTargetsPlayerAndCarriesProvenance",
+    "authoredDirectorMobCanKillFullHealthSurvivalPlayer"
+  ],
+  "migrated": [
+    "geologicalWeightsMayDifferButDepthAndCostMayNot",
+    "geologicalProbabilityHeaviesAndConditionsAreRejected"
+  ]
+}

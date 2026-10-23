@@ -1,0 +1,25 @@
+{
+  "schema": "bc.cave.world-initial-root-adaptations.v1",
+  "scope": "Approved paid catalogue adapter and strengthened identity assertions only; all other original setup/cadence/query/RNG/assertion/deadline bytes unchanged",
+  "source": "src/worldGameTest/java/com/bettercontent/bettercaveencounters/DepthDirectorWorldGameTests.java",
+  "before_sha256": "dba2bb24b6dff6457053a983e2e06b237fee303a92e013890bddca5122184acd",
+  "after_sha256": "02b4d3e6682c4ed6ec7373ef8f04c95b0cea553e8a974065770ca6219dee8edf",
+  "replacements": [
+    {
+      "before": "import com.bettercontent.bettercaveencounters.DepthDirectorMod;\n",
+      "after": "import com.bettercontent.bettercaveencounters.DepthDirectorMod;\nimport com.bettercontent.bettercaveencounters.CatalogueRootAccess;\n"
+    },
+    {
+      "before": "                    helper.assertTrue(entry.entity().equals(result.entity()),\n                            \"single-entry ecology selected the wrong entity for \" + entry.entity());\n",
+      "after": "                    helper.assertTrue(entry.entity().equals(result.selectedEntity()),\n                            \"single-entry ecology selected the wrong authorizing entity for \" + entry.entity());\n                    helper.assertTrue(result.mob() != null && !result.mob().isRemoved()\n                                    && level.getEntity(result.mob().getUUID()) == result.mob()\n                                    && result.entity().equals(ForgeRegistries.ENTITY_TYPES.getKey(result.mob().getType())),\n                            \"resolved catalogue identity must name the actual live world Mob\");\n                    helper.assertTrue(result.paidAndSameFamily() && result.paidRoot() != null,\n                            \"catalogue admission must prepay the original root and preserve its lineage family\");\n                    if (result.nativeReplacement()) {\n                        helper.assertTrue(entry.entity().equals(new ResourceLocation(\"the_deep_void\", \"damned\"))\n                                        && Set.of(\"cross_eyes\", \"big_eye\", \"multiple_eyes\", \"four_eyes\").stream()\n                                        .map(path -> new ResourceLocation(\"the_deep_void\", path)).anyMatch(result.entity()::equals)\n                                        && !result.paidRoot().equals(result.mob().getUUID()),\n                                \"only the genuine Damned initial transaction may resolve to one native variant\");\n                    } else helper.assertTrue(entry.entity().equals(result.entity()) && result.paidRoot().equals(result.mob().getUUID()),\n                            \"nonconverted catalogue identity must remain the original paid root\");\n"
+    },
+    {
+      "before": "            DepthDirectorDiagnostics.SpawnOutcome result = DepthDirectorDiagnostics.spawnAt(\n                    level, players, blend, depth, random, position, allowHeavy, maximumCost);\n            return new WorldSpawn(result.spawned(), result.mob(), result.entity());\n",
+      "after": "            CatalogueRootAccess.Outcome result = CatalogueRootAccess.spawnAt(\n                    level, players, blend, depth, random, position, allowHeavy, maximumCost);\n            return new WorldSpawn(result.spawned(), result.mob(), result.entity(), result.selectedEntity(),\n                    result.nativeReplacement(), result.paidAndSameFamily(), result.paidRoot());\n"
+    },
+    {
+      "before": "    private record WorldSpawn(boolean spawned, Mob mob, ResourceLocation entity) {}\n",
+      "after": "    private record WorldSpawn(boolean spawned, Mob mob, ResourceLocation entity, ResourceLocation selectedEntity,\n                              boolean nativeReplacement, boolean paidAndSameFamily, java.util.UUID paidRoot) {}\n"
+    }
+  ]
+}
