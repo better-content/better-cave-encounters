@@ -197,6 +197,8 @@ dependencies {
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
     annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.4")
     testCompileOnly("io.github.llamalad7:mixinextras-common:0.5.4")
+    // Plain JDK tests do not unpack the Forge wrapper's nested common API JAR.
+    testRuntimeOnly("io.github.llamalad7:mixinextras-common:0.5.4")
     testCompileOnly(fg.deobf("bettercontent.local:better-compat-fixes:0.1.9"))
     testRuntimeOnly(fg.deobf("bettercontent.local:better-compat-fixes:0.1.9"))
 
