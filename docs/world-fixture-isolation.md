@@ -21,6 +21,19 @@ catching the original extraction call or changing its result/error consumer/Thro
 outside all reserved Mixin prefixes, and every new helper/observer is forbidden in shipping archives.
 Source/SDK/AP controls do not establish actual transformed execution or World/Geology acceptance.
 
+## Debug-only execution boundary
+
+The long World and Geology suites are Debug-only. Source/Dist preparation runs `verifyFull`
+and `stageRuntimeJar`, retaining short unit/parser/ABI/source/archive checks and the native
+parser startup/log gate. It does not launch either long profile. When explicitly authorized,
+`./gradlew verifyDebug` reaches the existing `verifyWorld` task and both original native runs.
+Their bodies, counts, assertions, deadlines and retained evidence are unchanged.
+
+For the current source/Dist path their status is **DEFERRED / NOT RUN**, never PASS. The earlier
+45-minute aborted World attempt remains failed/incomplete evidence. Debug's boundary inventory
+marks both suites uncovered until explicit execution and admission; ordinary source provenance
+does not confer their acceptance. No Debug run is implied by this routing change.
+
 ## One owning mod, two unchanged logical profiles
 
 `worldGameTest` and `geologyGameTest` attach their outputs to the existing

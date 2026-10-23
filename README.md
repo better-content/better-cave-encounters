@@ -166,8 +166,11 @@ The shared testing policy controls source/runtime authorization and evidence sco
 provider before compiling this Director API consumer; no old provider JAR is silently
 replaced. `BC_CUSTOM_MOD_JAR_DIR` retains its existing explicit-provider contract.
 
-`./gradlew verifyWorld`, when ordered, runs the full-cadence catalogue fixture and
-the geological fixture. The catalogue fixture now requires the strict exact six current authored
+`./gradlew verifyDebug`, only when Debug execution is explicitly ordered, reaches the
+existing `verifyWorld` task and runs the full-cadence catalogue fixture and the geological
+fixture. Both long suites are Debug-only, **DEFERRED / NOT RUN** in source/Dist preparation;
+this is not a passing verdict. `verifyFull` retains the short unit/parser/ABI/archive checks
+and native parser launch, without implicitly starting either long suite. The catalogue fixture now requires the strict exact six current authored
 profiles (old five plus Deep Void), all eighteen concurrent player cohorts at Y -56/0/32 and a
 surface sentinel. No old cohort, pacing/recovery/witness/cleanup logic, TPS condition or original
 80,000-tick deadline is relaxed. Its Deep Void8507128 original archive is checked against the actual
@@ -181,9 +184,12 @@ the geology profile, which actually binds Cataclysm. Original archives are check
 hashes; `BC_PACK_ROOT` may supply the pack root explicitly. Declared pack configuration,
 rosters/tags and the actual global loot script/configuration are copied reproducibly.
 
-The pack's active-mod metadata now requests `verifyWorld` before future candidate staging
-and binds all declared pack/pin inputs; writing that declaration does not run it. Geological
-qualification hashes the built reobfuscated Director artifact without invoking staging.
+The pack's active-mod metadata requests only `verifyFull` and `stageRuntimeJar` for
+source/Dist preparation and still binds the declared pack/pin inputs. Long World/Geology
+execution remains explicitly reachable through `verifyDebug` → `verifyWorld`; it is not
+silently moved to another source prerequisite. Debug coverage stays uncovered until those
+suites are explicitly run and admitted. Geological qualification hashes the built
+reobfuscated Director artifact without invoking staging.
 Encounter species history is apportioned with conserved budgets at locality splits and summed
 on rejoin, rather than resetting or multiplying counts. Packet history and family heavy identity
 also survive topology changes.

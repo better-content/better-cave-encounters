@@ -516,8 +516,13 @@ tasks.register("verifyFull") {
 }
 tasks.register("verifyWorld") {
     group = "verification"
-    description = "Runs retained full-cadence and pinned geological/native-population qualification fixtures."
+    description = "Debug-only: runs retained full-cadence and pinned geological/native-population fixtures."
     dependsOn("verifyFull", "runWorldGameTestServer", "runGeologyGameTestServer")
+}
+tasks.register("verifyDebug") {
+    group = "verification"
+    description = "Explicit Debug-only entry point for both long Cave world suites; not a source/Dist prerequisite."
+    dependsOn("verifyWorld")
 }
 fun requireWorldProfileCompletion(directory: File) {
     val latest = directory.resolve("logs/latest.log")
