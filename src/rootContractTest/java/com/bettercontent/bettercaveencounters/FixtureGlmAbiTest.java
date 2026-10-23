@@ -27,7 +27,7 @@ class FixtureGlmAbiTest {
     }
     @Test void privateOriginalReturnHandlerHasOnePublicDescriptorDispatcher() throws Exception {
         ClassNode mixin = read("com/bettercontent/bettercaveencounters/worldtest/mixin/FixtureGlmLoadMixin");
-        var handlers = mixin.methods.stream().filter(method -> method.name.equals("cave$proveOriginalReturn")).toList();
+        var handlers = mixin.methods.stream().filter(method -> method.name.equals("cave$observeActualNativeReturn")).toList();
         assertEquals(1, handlers.size());
         var handler = handlers.get(0);
         assertTrue((handler.access & Opcodes.ACC_PRIVATE) != 0);
@@ -43,7 +43,7 @@ class FixtureGlmAbiTest {
         assertEquals("RETURN", at.values.get(at.values.indexOf("value") + 1));
         assertEquals(1, calls(mixin).stream().filter(call -> call.owner.equals(FIXTURE)
             && call.name.equals("atNativeApplyReturn")
-            && call.desc.equals("(Lnet/minecraftforge/common/loot/LootModifierManager;Lnet/minecraft/server/packs/resources/ResourceManager;)V")).count());
+            && call.desc.equals("(Lnet/minecraftforge/common/loot/LootModifierManager;Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;)V")).count());
         ClassNode fixture = read(FIXTURE);
         assertTrue((fixture.access & Opcodes.ACC_PUBLIC) != 0);
         var dispatch = fixture.methods.stream().filter(method -> method.name.equals("atNativeApplyReturn")).findFirst().orElseThrow();
