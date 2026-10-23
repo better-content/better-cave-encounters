@@ -3,6 +3,6 @@
   "minVersion": "0.8",
   "package": "com.bettercontent.bettercaveencounters.worldtest.mixin",
   "compatibilityLevel": "JAVA_17",
-  "mixins": ["FixtureGlmLoadMixin"],
+  "mixins": ["FixtureGlmLoadMixin", "RegistryCodecDecodeMixin", "RootCodecBodyMixin"],
   "injectors": {"defaultRequire": 1}
 }

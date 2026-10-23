@@ -68,7 +68,8 @@ def require_archive(archive, sources=False):
         require(production in names, 'Production owning mod missing from archive')
         forbidden = ('DepthDirectorWorldGameTests', 'GeologicalWorldGameTests',
                      'DepthDirectorWorldTestMod', 'GeologicalDefinitionGameTests', 'CatalogueRootAccount', 'CatalogueRootAccess',
-                     'CaveFixtureGlm', 'FixtureGlmLoadMixin', 'bc_cave_fixture_glm', 'glm-profiles.json',
+                     'CaveFixtureGlm', 'FixtureGlmLoadMixin', 'OriginalCodecDispatchProof', 'CodecDispatchLedger',
+                     'RegistryCodecDecodeMixin', 'RootCodecBodyMixin', 'bc_cave_fixture_glm', 'glm-profiles.json',
                      'world-case-inventory.json', 'world-profile-inputs.json', 'world-initial-root-adaptations.json', 'native-case-inventory.json',
                      'geological-qualification.json', 'data/better_cave_encounters_world_tests/')
         require(not any(any(token in n for token in forbidden) for n in names),
@@ -213,6 +214,13 @@ def check_source():
             and 'if (Boolean.getBoolean("bc.geologyQualification"))' in subscriber, 'Original single selected registration changed')
     require('DepthDirectorMod.class.getModule()' in subscriber and 'descriptorMods.equals(java.util.List.of(DepthDirectorMod.MOD_ID))' in subscriber,
             'Missing actual FML module/descriptor runtime guards')
+    config = json.loads((ROOT / 'src/worldGameTest/resources/bc_cave_fixture_glm.mixins.json').read_text())
+    require(config['required'] and config['injectors']['defaultRequire'] == 1 and config['mixins'] == ['FixtureGlmLoadMixin', 'RegistryCodecDecodeMixin', 'RootCodecBodyMixin'], 'Exact required native dispatch observers drift')
+    prefixes = [config['package']] + [json.loads(p.read_text())['package'] for p in (ROOT / 'src/main/resources').glob('*.mixins.json')]
+    for source in (ROOT / 'src/worldGameTest/java').rglob('*.java'):
+        text = source.read_text(); package = re.search(r'\bpackage\s+([\w.]+)\s*;', text).group(1)
+        if any(package == prefix or package.startswith(prefix + '.') for prefix in prefixes):
+            require(package == config['package'] and source.stem in config['mixins'] and '@Mixin(' in text, 'Ordinary/unconfigured helper entered reserved Mixin namespace')
     for sources in (False, True):
         require_archive(synthetic_archive(sources), sources)
         for leak in ('com/bettercontent/bettercaveencounters/CatalogueRootAccount.' + ('java' if sources else 'class'),
@@ -220,6 +228,7 @@ def check_source():
                      'com/bettercontent/bettercaveencounters/GeologicalWorldGameTests.' + ('java' if sources else 'class'),
                      'com/bettercontent/bettercaveencounters/worldtest/CaveFixtureGlm.' + ('java' if sources else 'class'),
                      'com/bettercontent/bettercaveencounters/worldtest/mixin/FixtureGlmLoadMixin.' + ('java' if sources else 'class'),
+                     *('com/bettercontent/bettercaveencounters/worldtest/' + name + ('.java' if sources else '.class') for name in ('OriginalCodecDispatchProof', 'CodecDispatchLedger', 'mixin/RegistryCodecDecodeMixin', 'mixin/RootCodecBodyMixin')),
                      'bc_cave_fixture_glm.mixins.json', 'bc_cave_fixture_glm_scope.json', 'glm-profiles.json',
                      'world-case-inventory.json', 'data/better_cave_encounters_world_tests/loot_tables/policy_sentinel.json'):
             rejects(lambda leak=leak: require_archive(synthetic_archive(sources, leak), sources))

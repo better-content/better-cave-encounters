@@ -7,6 +7,20 @@ loaded owning descriptor establish the runtime module result; source layout and 
 not establish native acceptance. Shared authorization and retention rules remain in the
 [workspace documentation](../../../better-content-modpack/docs/README.md).
 
+## Original codec dispatch proof
+
+The fixture observes the original serializer-registry decode returns and original root parse
+extraction, not a second call to a loaded modifier's `codec()`. In pinned Goety 8087429,
+`AddItemLootModifier.CODEC` is an unmemoized supplier of newly built codecs (unlike its memoized
+InstantPick codec); comparing a fresh instance to the registered codec is not native provenance.
+Bounded scalar witnesses require the exact original registered codec object/reverse key, successful
+original root return, canonical input digest, implementation class, complete count and row order.
+The pinned native loader-byte witness still establishes its builder-to-loaded-list traversal.
+No codec is memoized/replaced and no parse is repeated. Metadata failures invalidate proof without
+catching the original extraction call or changing its result/error consumer/Throwable. Helpers are
+outside all reserved Mixin prefixes, and every new helper/observer is forbidden in shipping archives.
+Source/SDK/AP controls do not establish actual transformed execution or World/Geology acceptance.
+
 ## One owning mod, two unchanged logical profiles
 
 `worldGameTest` and `geologyGameTest` attach their outputs to the existing

@@ -33,6 +33,8 @@ public final class CaveFixtureGlm {
     private static int applyReturns;
     private static boolean failed;
     private static String lastScalarProof;
+    private static volatile List<String> expectedCodecIds = List.of();
+    public static void beginOriginalCodecProof() { OriginalCodecDispatchProof.begin(expectedCodecIds); }
     private CaveFixtureGlm() {}
     private static void require(boolean valid, String reason) {
         if (!valid) throw new IllegalStateException(reason);
@@ -78,6 +80,9 @@ public final class CaveFixtureGlm {
         if (event.getPackType() != PackType.SERVER_DATA) return;
         try {
             JsonObject data = manifest();
+            List<String> ids = new ArrayList<>();
+            for (var row : data.getAsJsonObject("projection").getAsJsonArray("rows")) ids.add(row.getAsJsonObject().get("id").getAsString());
+            expectedCodecIds = List.copyOf(ids); // scalars only, existing manifest read; no hot observer I/O
             String id = data.get("pack_id").getAsString();
             Path pack = manifestPath().getParent().resolve("pack");
             event.addRepositorySource(consumer -> consumer.accept(Pack.create(id, Component.literal(id), true,
@@ -136,13 +141,14 @@ public final class CaveFixtureGlm {
         return proof;
     }
     /** INTERNAL fixture dispatcher: actual native receiver at original apply RETURN, read-only APIs. */
-    public static synchronized void atNativeApplyReturn(LootModifierManager manager, ResourceManager resources) {
+    public static synchronized void atNativeApplyReturn(LootModifierManager manager, Map<ResourceLocation, JsonElement> definitions, ResourceManager resources) {
         try {
             require(!failed && ++applyReturns <= 4, "Fixture reload proof overflow/previous failure");
             JsonObject data = manifest();
             JsonObject proof = verifyResources(resources, data);
             byte[] scopeBytes = read(CaveFixtureGlm.class.getResourceAsStream("/bc_cave_fixture_glm_scope.json"));
-            String loaderHash = json(scopeBytes).getAsJsonObject("original_class_witnesses")
+            JsonObject scope = json(scopeBytes);
+            String loaderHash = scope.getAsJsonObject("original_class_witnesses")
                 .getAsJsonObject(LootModifierManager.class.getName()).get("sha256").getAsString();
             require(manager.getClass() == LootModifierManager.class, "Unexpected native loader implementation");
             require(sha(read(LootModifierManager.class.getResourceAsStream("/net/minecraftforge/common/loot/LootModifierManager.class"))).equals(loaderHash), "Pinned loader traversal/ordering bytecode differs");
@@ -154,8 +160,10 @@ public final class CaveFixtureGlm {
             require(registry != null, "Actual native codec registry missing");
             for (int i = 0; i < rows.size(); i++) {
                 ResourceLocation key = new ResourceLocation(rows.get(i).getAsJsonObject().get("codec").getAsString());
-                var codec = ((net.minecraftforge.common.loot.IGlobalLootModifier) loaded.get(i)).codec();
-                require(codec != null && registry.getValue(key) == codec && key.equals(registry.getKey(codec)), "Actual native codec identity/order differs");
+                ResourceLocation id = new ResourceLocation(rows.get(i).getAsJsonObject().get("id").getAsString());
+                require(loaded.get(i).getClass().getName().equals(scope.getAsJsonObject("outer_codecs").getAsJsonObject(key.toString()).get("codec_class").getAsString()), "Original decoded implementation class differs at " + i + ": " + id);
+                OriginalCodecDispatchProof.requireLoaded(i, id, key, definitions.get(id),
+                    (net.minecraftforge.common.loot.IGlobalLootModifier) loaded.get(i));
             }
             proof.addProperty("actualDecodedCount", loaded.size());
             proof.addProperty("actualCodecIdentitiesAndOrder", true);
@@ -166,7 +174,7 @@ public final class CaveFixtureGlm {
         } catch (Exception error) {
             failed = true;
             throw new IllegalStateException("Required Cave native GLM load proof failed", error);
-        }
+        } finally { OriginalCodecDispatchProof.end(); }
     }
     @Mod.EventBusSubscriber(modid = "better_cave_encounters", bus = Mod.EventBusSubscriber.Bus.FORGE)
     public static final class Verify {
