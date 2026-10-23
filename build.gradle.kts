@@ -261,6 +261,32 @@ tasks.processResources {
 }
 
 tasks.named<Jar>("jar") {
+    val refmapName = "better_cave_encounters.refmap.json"
+    val generatedRefmap = layout.buildDirectory.file("tmp/compileJava/compileJava-refmap.json")
+    val developmentRefmap = layout.buildDirectory.file("resources/main/$refmapName")
+    // MixinGradle contributes the authoritative generated map via addMixinsToJar.
+    // processResources also needs a development copy for native launches/contracts;
+    // remove ONLY that exact redundant input from this archive, never arbitrary duplicates.
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    eachFile {
+        if (path == refmapName && file.canonicalFile == developmentRefmap.get().asFile.canonicalFile) exclude()
+    }
+    doFirst {
+        val generated = generatedRefmap.get().asFile
+        val development = developmentRefmap.get().asFile
+        check(generated.isFile && development.isFile && generated.readBytes().contentEquals(development.readBytes())) {
+            "Missing/divergent generated and development refmap inputs"
+        }
+    }
+    doLast {
+        java.util.jar.JarFile(archiveFile.get().asFile).use { archive ->
+            val entries = archive.entries().asSequence().filter { it.name == refmapName }.toList()
+            check(entries.size == 1) { "Runtime archive requires exactly one generated refmap" }
+            val actual = archive.getInputStream(entries.single()).use { JsonSlurper().parse(it) }
+            check(actual == JsonSlurper().parse(generatedRefmap.get().asFile)) { "Archive refmap differs from authoritative generated mappings" }
+            check(archive.manifest?.mainAttributes?.getValue("MixinConfigs") == "better_cave_encounters.mixins.json") { "Runtime Mixin manifest drift" }
+        }
+    }
     manifest.attributes("MixinConfigs" to "better_cave_encounters.mixins.json")
     exclude("**/GeologicalDefinitionGameTests*", "native-case-inventory.json")
     finalizedBy("reobfJar")
