@@ -6,6 +6,7 @@ import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
+import java.util.jar.JarFile
 import java.util.zip.ZipFile
 
 plugins {
@@ -279,7 +280,7 @@ tasks.named<Jar>("jar") {
         }
     }
     doLast {
-        java.util.jar.JarFile(archiveFile.get().asFile).use { archive ->
+        JarFile(archiveFile.get().asFile).use { archive ->
             val entries = archive.entries().asSequence().filter { it.name == refmapName }.toList()
             check(entries.size == 1) { "Runtime archive requires exactly one generated refmap" }
             val actual = archive.getInputStream(entries.single()).use { JsonSlurper().parse(it) }
