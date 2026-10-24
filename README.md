@@ -44,11 +44,7 @@ pre-registry schema rejections and all four finite-slime/corpse assertions witho
 See [the exact assertion mapping](docs/native-parser-fixture.md). Source preparation is not proof
 of a passed native gate; failed plain-JVM bootstrap attempts remain retained separately.
 
-## Scope and authority
-
-This repository owns its mod-specific behavior and authoring inputs. Read [local instructions](AGENTS.md)
-and the [shared documentation/policy index](../../better-content-modpack/docs/README.md).
-
+## Scope
 
 Operators with permission level 2 may use `/depthdirector inspect <online player>`
 to read that player's encounter identity and family, phase, pursuit target and
@@ -160,7 +156,6 @@ loot and terrain logic are unchanged; hard caps can reject an excess child.
 
 ## Verification boundaries
 
-The shared testing policy controls source/runtime authorization and evidence scope.
 `verifyFast` remains Minecraft-free;
 `verifyFull` includes the existing headless native tests. Prepare the newly built Compat
 provider before compiling this Director API consumer; no old provider JAR is silently
@@ -214,3 +209,8 @@ same-artifact acceptance, even when a staged artifact hash is recorded.
 
 ### Injury pacing
 The average active maim count across participating players scales pressure buildup by `1 / (1 + averageMaims / 3)` and reinforcement intervals by its inverse. Healing HP does not remove this scaling. Semantic zero HP retains the ordinary low-health distress rules. Injuries do not cancel encounters, clear budgets, remove queued work, or exclude players from targeting.
+
+## Feature boundaries
+
+Director is player-centric. No dependency on Rail Crawler, Epic Fight, Tinkers' Construct or
+individual mob mods. Optional entities belong to datapack ecology and skip safely when absent.
