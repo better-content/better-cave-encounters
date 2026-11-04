@@ -234,12 +234,22 @@ mixin {
 }
 
 tasks.compileJava {
-    val actualRefmap = layout.buildDirectory.file("tmp/compileJava/compileJava-refmap.json")
+    val actualRefmap = layout.buildDirectory.file("generated/authoritative/better_cave_encounters.refmap.json")
     outputs.file(actualRefmap)
     // MixinExtras registers WrapOperation before Mixin's injector processor scans it.
     options.compilerArgs.addAll(listOf("-processor", "com.llamalad7.mixinextras.ap.MixinExtrasAP,org.spongepowered.tools.obfuscation.MixinObfuscationProcessorInjection,org.spongepowered.tools.obfuscation.MixinObfuscationProcessorTargets"))
     doLast {
-        check(actualRefmap.get().asFile.isFile) { "Initial-root Mixin processor did not produce its actual refmap" }
+        val emitted = listOf("compileJava-refmap.json", "better_cave_encounters.refmap.json")
+            .map { layout.buildDirectory.file("tmp/compileJava/$it").get().asFile }
+            .filter { it.isFile }
+        check(emitted.isNotEmpty()) { "Initial-root Mixin processor did not produce its actual refmap" }
+        check(emitted.map { it.readBytes().toList() }.distinct().size == 1) {
+            "Mixin processors emitted divergent refmaps"
+        }
+        actualRefmap.get().asFile.apply {
+            parentFile.mkdirs()
+            emitted.first().copyTo(this, overwrite = true)
+        }
         val text = actualRefmap.get().asFile.readText()
         check(text.contains("DamnedInitialRootMixin") && text.contains("EntityType;m_262496_")) {
             "Initial-root refmap must bind the actual production native EntityType.spawn invocation"
@@ -249,7 +259,7 @@ tasks.compileJava {
 
 tasks.processResources {
     dependsOn(tasks.compileJava)
-    from(layout.buildDirectory.file("tmp/compileJava/compileJava-refmap.json")) {
+    from(layout.buildDirectory.file("generated/authoritative/better_cave_encounters.refmap.json")) {
         rename { "better_cave_encounters.refmap.json" }
     }
     val props = mapOf(
@@ -265,7 +275,7 @@ tasks.processResources {
 
 tasks.named<Jar>("jar") {
     val refmapName = "better_cave_encounters.refmap.json"
-    val generatedRefmap = layout.buildDirectory.file("tmp/compileJava/compileJava-refmap.json")
+    val generatedRefmap = layout.buildDirectory.file("generated/authoritative/better_cave_encounters.refmap.json")
     val developmentRefmap = layout.buildDirectory.file("resources/main/$refmapName")
     // MixinGradle contributes the authoritative generated map via addMixinsToJar.
     // processResources also needs a development copy for native launches/contracts;
