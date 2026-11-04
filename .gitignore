@@ -7,3 +7,5 @@ run-geology-gametest/
 logs/
 *.iml
 .idea/
+# Locally cached binaries; Packwiz metadata/hashes remain tracked separately.
+/gradle/wrapper/gradle-wrapper.jar
