@@ -175,7 +175,7 @@ repositories {
     }
     ivy {
         name = "betterGameplayNoticesLocal"
-        url = uri(betterContentJar("better-gameplay-notices", "better-gameplay-notices-1.0.0.jar").parentFile)
+        url = uri(betterContentJar("better-gameplay-notices", "better-gameplay-notices-1.0.1.jar").parentFile)
         patternLayout { artifact("[artifact]-[revision].[ext]") }
         metadataSources { artifact() }
         content { includeGroup("bettercontent.notices.local") }
@@ -191,7 +191,7 @@ dependencies {
     // GameTestServer and local dev runs need the declared hard dependencies at runtime.
     runtimeOnly(fg.deobf("bettercontent.local:better-deaths-door:1.0.0"))
     runtimeOnly(fg.deobf("bettercontent.local:better-compat-fixes:0.1.9"))
-    runtimeOnly(fg.deobf("bettercontent.notices.local:better-gameplay-notices:1.0.0"))
+    runtimeOnly(fg.deobf("bettercontent.notices.local:better-gameplay-notices:1.0.1"))
     runtimeOnly("io.github.llamalad7:mixinextras-forge:0.5.4")
     compileOnly("io.github.llamalad7:mixinextras-common:0.5.4")
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
@@ -458,7 +458,7 @@ val verifyGeologicalPins = tasks.register("verifyGeologicalPins") {
         }
         listOf("better-compat-fixes" to "better-compat-fixes-0.1.9.jar",
             "better-deaths-door" to "better-deaths-door-1.0.0.jar",
-            "better-gameplay-notices" to "better-gameplay-notices-1.0.0.jar").forEach { (repo, artifact) ->
+            "better-gameplay-notices" to "better-gameplay-notices-1.0.1.jar").forEach { (repo, artifact) ->
             hashes[artifact] = digest(betterContentJar(repo, artifact), "SHA-256")
         }
         hashes["director_reobf_artifact"] = digest(layout.buildDirectory.file("reobfJar/output.jar").get().asFile, "SHA-256")
@@ -552,5 +552,5 @@ extra["caveFixtureGlmGeologyRun"] = geologyTestRun
 extra["caveFixtureGlmProviders"] = mapOf(
     "better-compat-fixes" to betterContentJar("better-compat-fixes", "better-compat-fixes-0.1.9.jar"),
     "better-deaths-door" to betterContentJar("better-deaths-door", "better-deaths-door-1.0.0.jar"),
-    "better-gameplay-notices" to betterContentJar("better-gameplay-notices", "better-gameplay-notices-1.0.0.jar"))
+    "better-gameplay-notices" to betterContentJar("better-gameplay-notices", "better-gameplay-notices-1.0.1.jar"))
 apply(from = "gradle/fixture-glm.gradle")
