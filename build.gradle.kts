@@ -277,18 +277,25 @@ tasks.named<Jar>("jar") {
     val refmapName = "better_cave_encounters.refmap.json"
     val generatedRefmap = layout.buildDirectory.file("generated/authoritative/better_cave_encounters.refmap.json")
     val developmentRefmap = layout.buildDirectory.file("resources/main/$refmapName")
-    // MixinGradle contributes the authoritative generated map via addMixinsToJar.
-    // processResources also needs a development copy for native launches/contracts;
-    // remove ONLY that exact redundant input from this archive, never arbitrary duplicates.
+    val processorRefmap = layout.buildDirectory.file("tmp/compileJava/$refmapName")
+    // MixinGradle contributes its processor output only when that transient file exists.
+    // Always package the verified authoritative copy; exclude only its two exact,
+    // byte-identical redundant inputs (development and transient processor copies).
+    from(generatedRefmap) { rename { refmapName } }
     duplicatesStrategy = DuplicatesStrategy.FAIL
     eachFile {
-        if (path == refmapName && file.canonicalFile == developmentRefmap.get().asFile.canonicalFile) exclude()
+        if (path == refmapName && file.canonicalFile in setOf(
+                developmentRefmap.get().asFile.canonicalFile, processorRefmap.get().asFile.canonicalFile)) exclude()
     }
     doFirst {
         val generated = generatedRefmap.get().asFile
         val development = developmentRefmap.get().asFile
         check(generated.isFile && development.isFile && generated.readBytes().contentEquals(development.readBytes())) {
             "Missing/divergent generated and development refmap inputs"
+        }
+        val processor = processorRefmap.get().asFile
+        check(!processor.isFile || generated.readBytes().contentEquals(processor.readBytes())) {
+            "Divergent transient Mixin processor refmap input"
         }
     }
     doLast {
