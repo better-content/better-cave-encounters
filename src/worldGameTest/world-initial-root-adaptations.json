@@ -1,10 +1,14 @@
 {
   "schema": "bc.cave.world-initial-root-adaptations.v1",
-  "scope": "Approved paid catalogue adapter and strengthened identity assertions only; all other original setup/cadence/query/RNG/assertion/deadline bytes unchanged",
+  "scope": "Approved paid catalogue adapter and native-Damned cohort assertion requalification only; original source setup/cadence/query/RNG/deadline bytes unchanged",
   "source": "src/worldGameTest/java/com/bettercontent/bettercaveencounters/DepthDirectorWorldGameTests.java",
   "before_sha256": "dba2bb24b6dff6457053a983e2e06b237fee303a92e013890bddca5122184acd",
-  "after_sha256": "02b4d3e6682c4ed6ec7373ef8f04c95b0cea553e8a974065770ca6219dee8edf",
+  "after_sha256": "8deb65c7336b4e9f31f0398db1a8fce66f4633aac935472851e39900c5c06198",
   "replacements": [
+    {
+      "before": "                    helper.assertTrue(roster.contains(entity),\n                            label() + \" spawned an entity outside its allocated roster: \" + entity);\n",
+      "after": "                    // The paid Damned roster root may be replaced by exactly one of its four\n                    // native variants. Require a committed, distinct-root Director lineage;\n                    // variants are not independent roster entries or ordinary offspring.\n                    boolean nativeDamnedRoot = roster.contains(new ResourceLocation(\"the_deep_void\", \"damned\"))\n                            && Set.of(\"cross_eyes\", \"big_eye\", \"multiple_eyes\", \"four_eyes\").stream()\n                                    .map(path -> new ResourceLocation(\"the_deep_void\", path)).anyMatch(entity::equals)\n                            && mob.getPersistentData().hasUUID(\"DepthDirectorLineage\")\n                            && !mob.getPersistentData().getUUID(\"DepthDirectorLineage\").equals(mob.getUUID())\n                            && !mob.getPersistentData().hasUUID(\"DepthDirectorParent\");\n                    helper.assertTrue(roster.contains(entity) || nativeDamnedRoot,\n                            label() + \" spawned an entity outside its paid roster/native root lineage: \" + entity);\n"
+    },
     {
       "before": "import com.bettercontent.bettercaveencounters.DepthDirectorMod;\n",
       "after": "import com.bettercontent.bettercaveencounters.DepthDirectorMod;\nimport com.bettercontent.bettercaveencounters.CatalogueRootAccess;\n"

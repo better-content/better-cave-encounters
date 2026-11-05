@@ -25,9 +25,11 @@
           "root_pin": null
         },
         {
-          "coordinate": "curse.maven:geckolib-388172:7553267",
-          "sha256": "8b90e11871a58b63816e99c529e6c932bc88e6beb3fec97ad618e22217df3250",
-          "root_pin": "mods/geckolib.pw.toml"
+          "coordinate": "curse.maven:geckolib-388172:8285794",
+          "sha256": "c04abba4fd354dd8c0e8a732f1f05f4dca893d2e1d962b2ab128bbd411478747",
+          "root_pin": "mods/geckolib.pw.toml",
+          "mod_id": "geckolib",
+          "required_dependencies": ["forge", "minecraft"]
         },
         {
           "coordinate": "curse.maven:goety-586095:8087429",
@@ -160,9 +162,11 @@
           "root_pin": "mods/curios.pw.toml"
         },
         {
-          "coordinate": "curse.maven:geckolib-388172:7553267",
-          "sha256": "8b90e11871a58b63816e99c529e6c932bc88e6beb3fec97ad618e22217df3250",
-          "root_pin": "mods/geckolib.pw.toml"
+          "coordinate": "curse.maven:geckolib-388172:8285794",
+          "sha256": "c04abba4fd354dd8c0e8a732f1f05f4dca893d2e1d962b2ab128bbd411478747",
+          "root_pin": "mods/geckolib.pw.toml",
+          "mod_id": "geckolib",
+          "required_dependencies": ["forge", "minecraft"]
         },
         {
           "coordinate": "curse.maven:global-gamerules-227657:7172469",
@@ -175,9 +179,11 @@
           "root_pin": "mods/goety.pw.toml"
         },
         {
-          "coordinate": "curse.maven:hyle-609850:7736352",
-          "sha256": "63e6943093a75b4f5202f33027acb727b044306853cdcd17379f6f10704b2a16",
-          "root_pin": "mods/hyle.pw.toml"
+          "coordinate": "curse.maven:hyle-609850:8126631",
+          "sha256": "779ef2185bfdd8a13e7bc820e4109cf3f7e4798a8864a91196bb10e526976897",
+          "root_pin": "mods/hyle.pw.toml",
+          "mod_id": "hyle",
+          "required_dependencies": ["forge", "minecraft"]
         },
         {
           "coordinate": "curse.maven:ice-and-fire-dragons-264231:5633453",
@@ -185,14 +191,18 @@
           "root_pin": "mods/ice-and-fire-dragons.pw.toml"
         },
         {
-          "coordinate": "curse.maven:in-control-257356:7436213",
-          "sha256": "85d64d0f81f6eb6e1e2fa2a97a0aeabcea9e371498c3853b12c3697891e57f2c",
-          "root_pin": "mods/in-control.pw.toml"
+          "coordinate": "curse.maven:in-control-257356:9321498",
+          "sha256": "9ec708e1fb194d9fed9ee776b4fb7d44769dce6f3b97b5ba1192b0ebbedfc368",
+          "root_pin": "mods/in-control.pw.toml",
+          "mod_id": "incontrol",
+          "required_dependencies": ["forge"]
         },
         {
-          "coordinate": "curse.maven:kubejs-238086:5853326",
-          "sha256": "3de6b7267d3aab981848ed54d3afe7edf20532fa4060631fd6fffcd99ac5f3d5",
-          "root_pin": "mods/kubejs.pw.toml"
+          "coordinate": "curse.maven:kubejs-238086:8020595",
+          "sha256": "1769312192fbf9d72f45054ba61130523bfb471b5f480a4bff8c210ec09400bb",
+          "root_pin": "mods/kubejs.pw.toml",
+          "mod_id": "kubejs",
+          "required_dependencies": ["forge", "rhino", "architectury"]
         },
         {
           "coordinate": "curse.maven:lionfishapi-1001614:8095554",
@@ -240,9 +250,11 @@
           "root_pin": "mods/tinkers-construct.pw.toml"
         },
         {
-          "coordinate": "curse.maven:unearthed-406825:7742307",
-          "sha256": "20aa3ca8934454490157dfe4a689a5946d9d08b45fee5c833cbe9b8ec2f64f3c",
-          "root_pin": "mods/unearthed.pw.toml"
+          "coordinate": "curse.maven:unearthed-406825:8135710",
+          "sha256": "6008ea2cd696496fb6515c060c6dc3e4468c64044865d41c2382f34b82c3f845",
+          "root_pin": "mods/unearthed.pw.toml",
+          "mod_id": "unearthed",
+          "required_dependencies": ["forge", "minecraft", "hyle"]
         },
         {
           "coordinate": "curse.maven:zeta-968868:7335229",

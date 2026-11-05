@@ -71,6 +71,7 @@ rootContractTest.configure {
     dependsOn(tasks.processResources, worldGameTest.classesTaskName)
     doFirst {
         systemProperty("bc.deepVoidOriginalArchive", pinnedWorldDeepVoid.singleFile.absolutePath)
+        systemProperty("bc.deepVoidPackPin", geologicalPackRoot.resolve(worldDeepVoid["pin"].toString()).absolutePath)
         systemProperty("bc.initialRootRefmap", layout.buildDirectory.file("resources/main/better_cave_encounters.refmap.json").get().asFile.absolutePath)
     }
 }
@@ -211,7 +212,7 @@ dependencies {
     add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:zeta-968868:7335229"))
     add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:tinkers-construct-74072:7449219"))
     add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:mantle-74924:7563777"))
-    add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:geckolib-388172:7553267"))
+    add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:geckolib-388172:8285794"))
     add("worldGameTestRuntimeOnly", fg.deobf("curse.maven:curios-api-309927:6418456"))
     add("worldGameTestRuntimeOnly", fg.deobf(
             "com.teamresourceful.resourcefullib:resourcefullib-forge-1.20.1:2.1.29"))

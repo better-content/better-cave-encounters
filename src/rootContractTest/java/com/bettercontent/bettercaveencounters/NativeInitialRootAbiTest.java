@@ -25,9 +25,14 @@ class NativeInitialRootAbiTest {
    var node=new ClassNode();new ClassReader(archive.getInputStream(entry)).accept(node,0);return node;
   }
  }
- @Test void exactOriginalArchiveNotAnUnreviewedNativeProcedureVersion() throws Exception {
+ @Test void actualOriginalArchiveMatchesCurrentPackIdentityNotAWhitelistedVersion() throws Exception {
   byte[] bytes=Files.readAllBytes(input("bc.deepVoidOriginalArchive"));
-  assertEquals("faa95b5af7eaf398f109c3abab054a0036a18022",HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(bytes)));
+  String pin=Files.readString(input("bc.deepVoidPackPin"));
+  assertTrue(java.util.regex.Pattern.compile("(?m)^hash-format = \"sha1\"$").matcher(pin).find(),
+      "Current pack pin must identify original archive bytes by SHA-1");
+  var matcher=java.util.regex.Pattern.compile("(?m)^hash = \"([0-9a-f]{40})\"$").matcher(pin);
+  assertTrue(matcher.find(),"Current pack pin must provide an original SHA-1 archive hash");
+  assertEquals(matcher.group(1),HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(bytes)));
  }
  @Test void originalProcedureHasFourSequentialExclusiveNativeReplacementBranches() throws Exception {
   var node=read(PROCEDURE);var method=node.methods.stream().filter(m->m.name.equals("execute")

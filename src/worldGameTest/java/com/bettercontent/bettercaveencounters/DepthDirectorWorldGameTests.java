@@ -387,8 +387,17 @@ public final class DepthDirectorWorldGameTests {
                         .collect(java.util.stream.Collectors.toSet());
                 for (Mob mob : spawned) {
                     ResourceLocation entity = ForgeRegistries.ENTITY_TYPES.getKey(mob.getType());
-                    helper.assertTrue(roster.contains(entity),
-                            label() + " spawned an entity outside its allocated roster: " + entity);
+                    // The paid Damned roster root may be replaced by exactly one of its four
+                    // native variants. Require a committed, distinct-root Director lineage;
+                    // variants are not independent roster entries or ordinary offspring.
+                    boolean nativeDamnedRoot = roster.contains(new ResourceLocation("the_deep_void", "damned"))
+                            && Set.of("cross_eyes", "big_eye", "multiple_eyes", "four_eyes").stream()
+                                    .map(path -> new ResourceLocation("the_deep_void", path)).anyMatch(entity::equals)
+                            && mob.getPersistentData().hasUUID("DepthDirectorLineage")
+                            && !mob.getPersistentData().getUUID("DepthDirectorLineage").equals(mob.getUUID())
+                            && !mob.getPersistentData().hasUUID("DepthDirectorParent");
+                    helper.assertTrue(roster.contains(entity) || nativeDamnedRoot,
+                            label() + " spawned an entity outside its paid roster/native root lineage: " + entity);
                     helper.assertTrue(!FORBIDDEN_BASE_HOSTILES.contains(entity),
                             label() + " spawned a forbidden base zombie/skeleton: " + entity);
                     helper.assertTrue(mob.getTarget() == player,

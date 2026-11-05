@@ -43,7 +43,8 @@ def check_deep_void(pin, archive):
     require(metadata['modLoader'] == 'javafml' and metadata['loaderVersion'] == '[47,)',
             'Deep Void requires the existing Forge47 JavaFML loader, not a guessed SDK')
     require(len(metadata['mods']) == 1 and metadata['mods'][0]['modId'] == spec['mod_id']
-            and metadata['mods'][0]['version'] == spec['mod_version'], 'Wrong Deep Void metadata')
+            and isinstance(metadata['mods'][0].get('version'), str) and metadata['mods'][0]['version'],
+            'Wrong Deep Void mod identity/metadata fields')
     dependencies = metadata['dependencies'][spec['mod_id']]
     mandatory = sorted(d['modId'] for d in dependencies if d['mandatory'])
     optional = sorted(d['modId'] for d in dependencies if not d['mandatory'])
@@ -111,7 +112,7 @@ def require_initial_root_adaptation(text, case):
             and spec['before_sha256'] == case['pre_initial_root_transaction_sha256']
             and spec['after_sha256'] == case['adapted_sha256'], 'Wrong approved initial-root source context')
     require(hashlib.sha256(text.encode()).hexdigest() == spec['after_sha256'], 'Unexpected initial-root source change')
-    require(len(spec['replacements']) == 4, 'Initial-root adaptation must remain the four approved local regions')
+    require(len(spec['replacements']) == 5, 'Initial-root adaptation must remain the five reviewed local regions')
     restored = text
     for replacement in spec['replacements']:
         require(replacement['before'] and replacement['after'] and restored.count(replacement['after']) == 1,

@@ -27,7 +27,7 @@
     },
     {
       "pin": "mods/geckolib.pw.toml",
-      "coordinate": "curse.maven:geckolib-388172:7553267"
+      "coordinate": "curse.maven:geckolib-388172:8285794"
     },
     {
       "pin": "mods/curios.pw.toml",
@@ -71,15 +71,15 @@
     },
     {
       "pin": "mods/unearthed.pw.toml",
-      "coordinate": "curse.maven:unearthed-406825:7742307"
+      "coordinate": "curse.maven:unearthed-406825:8135710"
     },
     {
       "pin": "mods/hyle.pw.toml",
-      "coordinate": "curse.maven:hyle-609850:7736352"
+      "coordinate": "curse.maven:hyle-609850:8126631"
     },
     {
       "pin": "mods/kubejs.pw.toml",
-      "coordinate": "curse.maven:kubejs-238086:5853326"
+      "coordinate": "curse.maven:kubejs-238086:8020595"
     },
     {
       "pin": "mods/rhino.pw.toml",
@@ -99,7 +99,7 @@
     },
     {
       "pin": "mods/in-control.pw.toml",
-      "coordinate": "curse.maven:in-control-257356:7436213"
+      "coordinate": "curse.maven:in-control-257356:9321498"
     }
   ],
   "pack_inputs": [

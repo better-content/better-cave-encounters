@@ -74,6 +74,27 @@ def components(data, coordinate, origin, depth=0):
     return result
 
 
+def require_sdk_shape(data, spec):
+    """Bind reviewed hooks to actual loader/registry fields, not an upstream version string."""
+    if 'mod_id' not in spec:
+        return
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        metadata = tomllib.loads(archive.read('META-INF/mods.toml').decode())
+    require(metadata.get('modLoader') == 'javafml', 'Original SDK loader changed: ' + spec['coordinate'])
+    mods = metadata.get('mods')
+    require(isinstance(mods, list) and len(mods) == 1 and mods[0].get('modId') == spec['mod_id'],
+            'Original SDK mod identity field changed: ' + spec['coordinate'])
+    declared = metadata.get('dependencies', {}).get(spec['mod_id'], [])
+    require(isinstance(declared, list), 'Original SDK dependency schema changed')
+    required = {entry.get('modId') for entry in declared if entry.get('mandatory') is True
+                and isinstance(entry.get('versionRange'), str) and entry['versionRange']}
+    require(set(spec['required_dependencies']) <= required,
+            'Original SDK required dependency fields changed: ' + spec['coordinate'])
+    require(all(isinstance(entry.get('modId'), str) and isinstance(entry.get('mandatory'), bool)
+                and isinstance(entry.get('versionRange'), str) for entry in declared),
+            'Original SDK dependency field type changed: ' + spec['coordinate'])
+
+
 def project(scope, profile, root_index, inventory, root_override):
     """Selection is declaration INTERSECT explicit Root membership, before resource/type checks."""
     spec = scope['profiles'][profile]
@@ -157,7 +178,16 @@ def prepare(bindings_path, pack_root, profile, output):
         require(sha(raw) == spec['sha256'], 'Original SDK archive differs: ' + spec['coordinate'])
         if spec['root_pin']:
             pin = tomllib.loads(read(pack_root / spec['root_pin'], inputs).decode())
-            require(pin['download']['hash-format'] == 'sha1' and hashlib.sha1(raw).hexdigest() == pin['download']['hash'], 'Root pin does not bind original SDK')
+            require(pin['download']['hash-format'] == 'sha1' and hashlib.sha1(raw).hexdigest() == pin['download']['hash'],
+                    'Root pin does not bind original SDK')
+            if spec['coordinate'].startswith('curse.maven:'):
+                artifact = spec['coordinate'].split(':')
+                owner = artifact[1].rsplit('-', 1)
+                update = pin.get('update', {}).get('curseforge', {})
+                require(len(owner) == 2 and owner[1].isdigit() and int(owner[1]) == update.get('project-id')
+                        and artifact[2].isdigit() and int(artifact[2]) == update.get('file-id'),
+                        'Original SDK coordinate does not identify current pack pin')
+        require_sdk_shape(raw, spec)
         inventory += components(raw, spec['coordinate'], str(Path(actual_item['path']).resolve()))
     for item in bindings['supplemental']:
         inventory += components(read(item['path'], inputs), item['coordinate'], str(Path(item['path']).resolve()))

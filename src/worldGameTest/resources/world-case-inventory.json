@@ -10,7 +10,7 @@
       "template": "director_cave",
       "timeout_ticks": 80000,
       "original_sha256": "9a39fbcdf1052379ad368aeb8c02b351e2cc49dcb25ff7397870d48dbc06e6af",
-      "adapted_sha256": "02b4d3e6682c4ed6ec7373ef8f04c95b0cea553e8a974065770ca6219dee8edf",
+      "adapted_sha256": "8deb65c7336b4e9f31f0398db1a8fce66f4633aac935472851e39900c5c06198",
       "pre_initial_root_transaction_sha256": "dba2bb24b6dff6457053a983e2e06b237fee303a92e013890bddca5122184acd",
       "initial_root_adaptations": "src/worldGameTest/world-initial-root-adaptations.json",
       "profile_namespace": "better_cave_encounters_world_tests",

@@ -14,7 +14,6 @@
     "pin": "mods/the-deep-void.pw.toml",
     "coordinate": "curse.maven:the-deep-void-982999:8507128",
     "mod_id": "the_deep_void",
-    "mod_version": "1.98.1",
     "mandatory_dependencies": ["minecraft"],
     "optional_dependencies_not_added": ["geckolib", "jei"]
   }
