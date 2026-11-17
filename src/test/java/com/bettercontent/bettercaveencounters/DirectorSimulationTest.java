@@ -87,10 +87,17 @@ class DirectorSimulationTest {
                     profileCase.name + " active target");
             assertTrue(profile.budgetPerPlayer() >= 56 && profile.budgetPerPlayer() <= 100,
                     profileCase.name + " budget");
-            for (int players = 1; players <= 8; players++) {
+            // Arithmetic-only policy coverage for the 8/16/32-player qualification tiers;
+            // not a simulated login, concurrent encounter, or native load test.
+            for (int players = 1; players <= 32; players++) {
                 DirectorPolicy.PopulationLimits limits = DirectorPolicy.scaleForPlayers(profile, players, GLOBAL_CAP);
-                assertEquals(profile.budgetPerPlayer() * players, limits.budget());
-                assertEquals(Math.min(GLOBAL_CAP, profile.activeTargetPerPlayer() * players), limits.activeTarget());
+                assertEquals(profile.budgetPerPlayer() * players, limits.budget(),
+                        profileCase.name + " budget at " + players + " players");
+                assertEquals(Math.min(GLOBAL_CAP, profile.activeTargetPerPlayer() * players), limits.activeTarget(),
+                        profileCase.name + " global cap at " + players + " players");
+                assertEquals(Math.min(limits.activeTarget(), DirectorPolicy.MAX_QUEUED_PER_PLAYER * players),
+                        DirectorPolicy.packetSize(0, limits.activeTarget(), players),
+                        profileCase.name + " packet queue at " + players + " players");
             }
         }
     }
