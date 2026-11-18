@@ -237,6 +237,9 @@ mixin {
 tasks.compileJava {
     val actualRefmap = layout.buildDirectory.file("generated/authoritative/better_cave_encounters.refmap.json")
     outputs.file(actualRefmap)
+    // A missing authoritative refmap must recompile Java sources, not run the
+    // post-compile check after an incremental no-source-change invocation.
+    options.isIncremental = false
     // MixinExtras registers WrapOperation before Mixin's injector processor scans it.
     options.compilerArgs.addAll(listOf("-processor", "com.llamalad7.mixinextras.ap.MixinExtrasAP,org.spongepowered.tools.obfuscation.MixinObfuscationProcessorInjection,org.spongepowered.tools.obfuscation.MixinObfuscationProcessorTargets"))
     doLast {
